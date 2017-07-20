@@ -18,6 +18,11 @@ using Windows.Foundation.Diagnostics;
 
 namespace Microsoft.Devices.Management
 {
+    static class Utils
+    {
+        public const string IoTDMFolder = "C:\\Data\\Users\\DefaultAccount\\AppData\\Local\\Temp\\IotDm";
+    }
+
     static class ErrorCodes
     {
         // OS Errors

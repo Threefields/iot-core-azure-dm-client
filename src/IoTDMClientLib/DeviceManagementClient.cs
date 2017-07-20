@@ -621,7 +621,7 @@ namespace Microsoft.Devices.Management
             info.ContainerName = containerName;
             info.BlobName = fileName;
             info.Upload = true;
-            info.LocalPath = "C:\\Data\\Users\\DefaultAccount\\AppData\\Local\\Temp\\IotDm\\" + folderName + "\\" + fileName;
+            info.LocalPath = Utils.IoTDMFolder + "\\" + folderName + "\\" + fileName;
             info.AppLocalDataPath = ApplicationData.Current.TemporaryFolder.Path + "\\" + fileName;
 
             AzureFileTransferRequest request = new AzureFileTransferRequest(info);

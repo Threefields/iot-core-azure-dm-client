@@ -2,24 +2,22 @@
 
 ## Overview
 
-Event Tracing for Windows (ETW) is a mechanism provided on the Windows platform that allows processes to log message with minimal overhead.
+Event Tracing for Windows (ETW) is a mechanism provided on the Windows platform that allows processes to log messages with minimal overhead.
 
-Part of how ETW achieves that is by moving all the logic of managing which messages go into log files, how the log files are named, their sizes, etc out of the running process.
+Part of how ETW achieves that is by moving all the logic of managing which messages go into log files, how the log files are named, their size limits, etc out of the running process.
 
-This decoupling is done by the introduction of the concept of a 'provider' (i.e. the process that is writing the log message) and a 'collector' (i.e. the process that is reading the log messages).
+This decoupling is done by the introduction of the concept of a 'provider' (i.e. the process that is writing the log message) and a 'collector' (i.e. the process that is reading the log messages) - and a 'controller' (the OS) in between to connect the 'providers' and 'collectors'. The relationship between collectors and providers are many-to-many.
 
-The OS provides the infrastructure to connect both the providers with the collectors. The relationship between collectors and providers are many-to-many.
+Both providers and collectors are identified on the system using ids (assigned at creation time). The user can then specify which provider a given collector can listen to using those ids.
 
-Both providers and collectors are identified on the system using ids upon their creation. Using those ids, the user can create a collector to listen to specific providers.
-
-Collectors have properties that describe various things; for example: how the messages should be saved to a file, what is the max size of the file, etc. For each provider, the collectors also defined some properties, like which messages from that provider the collector should log (i.e. critical, error, information, etc).
+Collectors have properties that describe various things; for example: how the messages should be saved to a file, what is the maximum size of the file, etc. For each provider, a collector can define some properties; like log level for example (i.e. critical, error, information, etc).
 
 The logical hierarchy is as follows:
 
 <pre>
 - Collector1
   - LogFileSizeLimitMB = 4
-  - LogFileFolder = "c:\users\defaultaccount\logs"
+  - LogFileFolder = "AzureDM"
   - Provider1
     - TraceLevel = critical
   - Provider2
@@ -28,49 +26,53 @@ The logical hierarchy is as follows:
   - ...
 </pre>
 
-Above, `Collector1` is defined to listen to two providers; `Provider1` and `Provider2`. `Collector1` will write only critical messages from `Provider1` and error (or higher prioertiy) messages from `Provider2`.
+Above, `Collector1` is defined to listen to two providers; `Provider1` and `Provider2`. `Collector1` will write only critical messages from `Provider1` and error (or higher priority) messages from `Provider2`.
+
+Here is a link to the [Event Tracing architecture on MSDN](https://msdn.microsoft.com/en-us/library/windows/desktop/aa363668.aspx).
 
 ## When to Use Azure DM Diagnostic Logs Management
 
 A typical usage scenario is that there is a problem with a certain process running on the system.
 
 - If that process does not log using ETW, then, this mechanism is not for it.
-- If that process is using ETW, then it is a provider and it logs its message to the OS under a certain guid. The user needs to find out which guid it is using. Let's say it's <i>providerGuid</i>.
+- If that process is using ETW, then it is a provider and it logs its message to the OS under a certain guid. The user needs to find out which guid it is.
 
 Once we have the provider(s) guid(s), we can define a collector and list the providers underneath - along with all the necessary configurations for the collector and the providers.
 
 ## How to Use Azure DM Diagnostic Logs Management
+
+Windows IoT Azure DM exposes ETW configuration by wiring-up the [Diagnostic Log CSP](https://docs.microsoft.com/en-us/windows/client-management/mdm/diagnosticlog-csp). The logic and properties described below is very closely based on how the CSP is designed.
 
 Here are the steps to capture logs to a file on disk:
 
 - Identify the provider(s) you want to capture (find out the guids you need to collect).
 - Create a collector, configure it, and add the providers you want captured to it.
 - Start collection.
-- Stop collection. This saves a log file on disk in the pre-configured folder.
+- Stop collection. This saves a log file on disk in a pre-configured folder.
 
 Here are the steps to upload a log file:
 
 - Enumerate all the files in the specified log folders.
-- Provide the source file name on disk, the target Azure Storage parameters (connection string, container), and the Azure DM client will uplaod it for you.
+- Provide the source file name on disk, the target Azure Storage parameters (connection string, container), and the Azure DM client will upload it for you.
 
 ## Creating, Configuring, and Starting/Stopping Collectors
 
-Collectors are created by simply defining them in the device twin <i>desired</i> properties section. Each collector exposes a set of properties that its operation along with a set of providers and how each of them is processed by the collector.
+Collectors are created by simply defining them in the device twin <i>desired</i> properties section. Each collector exposes a set of properties that defines its operation along with a set of providers and how each of them is processed by the collector.
 
 Below is what the schema looks like:
 
 ### Collectors List and DeviceTwin Interaction
 
 <pre>
-"Windows_1" : {
-    "eventTracingCollectors_2" : {
-        "collector00_3" : {
+"Windows" : {
+    "eventTracingCollectors" : {
+        "collector00" : {
             "reportProperties" : "yes"|"no",
-            "applyProperties_4" : {collector configuration object}|"no"
+            "applyProperties" : {collector configuration object}|"no"
             },
-        "collector01_3" : {
+        "collector01" : {
             "reportProperties" : "yes"|"no",
-            "applyProperties_4" : {collector configuration object}|"no"
+            "applyProperties" : {collector configuration object}|"no"
             },
         "?" : "detailed" | "minimal" | "none"
         }
@@ -94,23 +96,23 @@ Below is what the schema looks like:
 <pre>
 {
     "traceLogFileMode" : "sequential"|"circular",
-    "logFileSizeLimitMB" : "<i>limit</i>",
+    "logFileSizeLimitMB" : <i>limit</i>,
     "logFileFolder" : "<i>collectorFolderName</i>",
     "started" : "yes" | "no",
-    "guid00_5" : {provider configuration object},
-    "guid01_5" : {provider configuration object}
+    "guid00" : {provider configuration object},
+    "guid01" : {provider configuration object}
 }
 </pre>
 
-- `"traceLogFileMode"`: specifies the log file logging mode. Allowed values are `"sequential"` or `"circular"`.
+- `"traceLogFileMode"`: specifies the log file logging mode. Allowed values are `"sequential"` or `"circular"`. Note that when it is set to `"sequential"`, logging will stop after the file reaches out its set limit.
 - `"logFileSizeLimitMB"`: specifies the limit for the log file in megabytes. The default value is 4, and the acceptable range is 1-2048.
-- `"collectorFolderName"`: specifies the relative path to the user's data folder where the log files of that collector will be saved once collection stops. The files can later be enumerated and uploaded to Azure Storage. See below for more details.
+- `"collectorFolderName"`: specifies the relative path to the user's data folder where the log files of that collector will be saved once collection stops. The folder name cannot include `\` (The files can later be enumerated and uploaded to Azure Storage. See below for more details).
 - `"started"`: specifies whether the collector should be active (i.e. collecting) or not. Its value is applied everytime the DM client service starts, or the property changes.
   - If this is set to `"yes"`, the collector will be started (if it is not already).
   - If this is set to `"no"`, the collector will be stopped, and a file will be saved in <i>logFileFolder</i> (if it is already running).
 - `"guid00"`: specifies the <i>provider configuration object</i> for this guid. See below for more details.
 
-### Provider Configuration Object
+### Provider Configuration Objectwindows
 
 <pre>
 {
@@ -136,14 +138,14 @@ Collectors are reported if:
 The reporting for `"detailed"` looks like this:
 
 <pre>
-"windows_1" : {
-    "eventTracingLogs_2" : {
-        "collectorName00_3" : {
+"windows" : {
+    "eventTracingLogs" : {
+        "collectorName00" : {
             "traceLogFileMode" : "sequentual"|"circular"",
             "logFileSizeLimitMB" : "4",
             "logFileFolder" : "collectorFolderName",
             "started" : "yes"|"no",
-            "guid00_4" : {
+            "guid00" : {
                 "traceLevel": "critical"|"error"|"warning"|"information"|"verbose",
                 "keywords" : "",
                 "enabled" : true|false,
@@ -156,11 +158,11 @@ The reporting for `"detailed"` looks like this:
 
 The reporting for `"minimal"` looks like this:
 <pre>
-"windows_1" : {
-    "eventTracingLogs_2" : {
-        "collectorName00_3" : "",
-        "collectorName01_3" : "",
-        "collectorName02_3" : ""
+"windows" : {
+    "eventTracingLogs" : {
+        "collectorName00" : "",
+        "collectorName01" : "",
+        "collectorName02" : ""
         }
     }
 }
@@ -171,14 +173,35 @@ The reporting for `"minimal"` looks like this:
 To upload collected log files, 
 
 - The device must be online.
-- Invoke the direct method `windows.enumerateETWLogs` to get the list of saved log files.
-- Invoke the direct method `windows.uploadFile` to upload a specific file from disk to Azure Storage.
+- Enumerate saved files by invoking the direct methods `windows.enumDMFolders` and `windows.enumDMFiles`.
+- Upload a file (given its folder and name) by invoking the direct method `windows.uploadFile`.
 
 To delete collected log files from the device,
 
-- Invoke the direct method `windows.deleteFile`.
+- The device must be online.
+- Enumerate saved files by invoking the direct methods `windows.enumDMFolders` and `windows.enumDMFiles`.
+- Delete a file (given its folder name) by invoking the direct method `windows.deleteFile`.
 
-### windows.enumerateETWLogs
+### windows.enumDMFolders
+
+Call this method to get a list of IoTDM subfolder names. The IoTDM folder is `C:\Data\Users\DefaultAccount\AppData\Local\Temp\IotDm`. The subfolder names are the names specified in collectors LogFileFolder properties.
+
+#### Input
+<i>none</i>
+
+#### Output
+<pre>
+{
+    "list" : [
+        "folder0",
+        "folder1",
+        "folder.",
+        "folderN",
+    ]
+}
+</pre>
+
+### windows.enumDMFiles
 
 Call this method to get a list of the saved log files under the log specified log folder.
 
@@ -186,21 +209,19 @@ Call this method to get a list of the saved log files under the log specified lo
 
 <pre>
 {
-    "folder" : "<i>relativeFolderName</i>",
-    "match": "<i>matchString</i>"
+    "folder" : "<i>folderName</i>"
 }
 </pre>
 
 Notes:
 
-- `relativeFolderName` is relative to the user's data folder.
+- `folderName` is the name of the folder under the IoTDM data folder.
 
 For example:
 
 <pre>
 {
     "folder" : "AzureDM",
-    "match": "*2017*"
 }
 </pre>
 
@@ -208,12 +229,14 @@ For example:
 
 <pre>
 {
-    "fileName00" : "<i>file size in megabytes</i>",
-    "fileName01" : "<i>file size in megabytes</i>"
+    "list": [
+        "AzureDM_2017_07_18_11_14_38.etl",
+        "AzureDM_2017_07_20_18_14_38.etl"
+    ]
 }
 </pre>
 
-### windows.uploadFile
+### windows.uploadDMFile
 
 Call this method to upload a saved file to Azure Storage.
 
@@ -221,29 +244,30 @@ Call this method to upload a saved file to Azure Storage.
 
 <pre>
 {
-    "fileName" : "<i>relativeFileName</i>",
+    "folder" : "<i>folderName</i>",
+    "fileName" : "<i>fileName</i>",
     "connectionString": "<i>connectionString</i>",
-    "containerName": "<i>containerName</i>"
+    "container": "<i>containerName</i>"
 }
 </pre>
 
 Notes:
 
-- `relativeFolderName` is relative to the user's data folder.
+- `folderName` is the name of a folder under IoTDM folder.
 
 #### Output
 
 <pre>
 {
-    "errorCode": 0 | <i>errorCode</i>,
-    "errorMessage": "<i>errorMessage</i>"
+    "response": "succeeded",
 }
 </pre>
 
 Notes:
 
-- `"errorCode"` 0 means success - otherwise, it is an error.
-- The upload is asynchronous. So, the file should appear on Azure Storage sometime later - or an error is reported to the device twin.
+- The upload is asynchronous. So, the file should appear on Azure Storage sometime later after the method response is received.
+
+  <i>ToDo: Need a better error reporting mechanism here.</i>
 
 #### windows.deleteFile
 
@@ -253,25 +277,25 @@ Call this method to delete a saved file from the device storage.
 
 <pre>
 {
-    "fileName" : "<i>relativeFileName</i>"
+    "folder" : "<i>folderName</i>",
+    "fileName" : "<i>fileName</i>",
 }
 </pre>
 
 Notes:
 
-- `relativeFolderName` is relative to the user's data folder.
+- `folderName` is the name of a folder under IoTDM folder.
 
 #### Output
 
 <pre>
 {
-    "errorCode": 0 | <i>errorCode</i>,
-    "errorMessage": "<i>errorMessage</i>"
+    "response": "succeeded",
 }
 </pre>
 
 Notes:
 
-- `"errorCode"` 0 means success - otherwise, it is an error.
-- The delete is asynchronous. So, the file should be removed sometime later.
+- The delete is asynchronous. So, the file should be removed sometime later after the method response is received.
 
+  <i>ToDo: Need a better error reporting mechanism here.</i>
