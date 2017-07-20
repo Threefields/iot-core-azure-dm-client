@@ -18,6 +18,7 @@ THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <iostream> 
 #include <iomanip>
 #include <filesystem>
+#include "StringUtils.h"
 #include "Logger.h"
 
 using namespace std;
@@ -32,8 +33,8 @@ Logger::Logger(bool console, const wchar_t* logsRoot) :
         error_code code;
         filesystem::create_directory(logsRoot, code);
     }
-	
-	basic_ostringstream<wchar_t> fileName;
+
+    basic_ostringstream<wchar_t> fileName;
     fileName << logsRoot;
 
     wchar_t moduleFileName[MAX_PATH] = { 0 };

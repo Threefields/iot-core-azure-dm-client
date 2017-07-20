@@ -17,7 +17,6 @@ THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <mutex>
 #include <string>
 #include <sstream>
-#include "Utils.h"
 
 #include "..\DMMessage\DMGarbageCollectorTempFolder.h"
 #define TRACE_LOGSROOT SC_CLEANUP_FOLDER

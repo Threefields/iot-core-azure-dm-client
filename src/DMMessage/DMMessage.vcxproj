@@ -95,8 +95,10 @@
     <ClInclude Include="Models\CertificateConfiguration.h" />
     <ClInclude Include="Models\CertificateDetails.h" />
     <ClInclude Include="Models\CheckForUpdates.h" />
+    <ClInclude Include="Models\DeviceDMStorage.h" />
     <ClInclude Include="Models\DeviceHealthAttestation.h" />
     <ClInclude Include="Models\DeviceInfo.h" />
+    <ClInclude Include="Models\EventTracingConfiguration.h" />
     <ClInclude Include="Models\FactoryReset.h" />
     <ClInclude Include="Models\FileTransfer.h" />
     <ClInclude Include="Models\ListApps.h" />
@@ -117,6 +119,8 @@
     <ClInclude Include="SerializationHelper.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\SharedUtilities\Logger.cpp" />
+    <ClCompile Include="..\SharedUtilities\StringUtils.cpp" />
     <ClCompile Include="DMMessage.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>

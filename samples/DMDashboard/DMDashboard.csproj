@@ -157,13 +157,15 @@
     <Compile Include="Appx\AppReportedStateControl.xaml.cs">
       <DependentUpon>AppReportedStateControl.xaml</DependentUpon>
     </Compile>
-    <Compile Include="CertificateExportDetails.xaml.cs">
+    <Compile Include="Certificates\CertificateExportDetails.xaml.cs">
       <DependentUpon>CertificateExportDetails.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Common\Converters.cs" />
     <Compile Include="Common\DMComboBox.xaml.cs">
       <DependentUpon>DMComboBox.xaml</DependentUpon>
     </Compile>
     <Compile Include="Common\DMControl.cs" />
+    <Compile Include="Common\DMControlList.cs" />
     <Compile Include="Common\DMSectionControl.cs" />
     <Compile Include="Common\DMTextBlock.xaml.cs">
       <DependentUpon>DMTextBlock.xaml</DependentUpon>
@@ -177,6 +179,40 @@
     <Compile Include="DeviceHealthAttestation\DeviceHealthAttestationReportedStateControl.xaml.cs">
       <DependentUpon>DeviceHealthAttestationReportedStateControl.xaml</DependentUpon>
     </Compile>
+    <Compile Include="DiagnosticLogs\CollectorDesiredStateControl.xaml.cs">
+      <DependentUpon>CollectorDesiredStateControl.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="DiagnosticLogs\CollectorReportedStateControl.xaml.cs">
+      <DependentUpon>CollectorReportedStateControl.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="DiagnosticLogs\CollectorsDesiredStateControl.xaml.cs">
+      <DependentUpon>CollectorsDesiredStateControl.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="DiagnosticLogs\CollectorsReportedStateControl.xaml.cs">
+      <DependentUpon>CollectorsReportedStateControl.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="DiagnosticLogs\ProviderDesiredStateControl.xaml.cs">
+      <DependentUpon>ProviderDesiredStateControl.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="DiagnosticLogs\ProviderDesiredStateListControl.xaml.cs">
+      <DependentUpon>ProviderDesiredStateListControl.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="DiagnosticLogs\ProviderReportedStateControl.xaml.cs">
+      <DependentUpon>ProviderReportedStateControl.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="DiagnosticLogs\ProviderReportedStateListControl.xaml.cs">
+      <DependentUpon>ProviderReportedStateListControl.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="DMFileRetrievalDialog.xaml.cs">
+      <DependentUpon>DMFileRetrievalDialog.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="StorageManagement\DeviceDMStorage.xaml.cs">
+      <DependentUpon>DeviceDMStorage.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="StorageManagement\DMFileRetrieval.xaml.cs">
+      <DependentUpon>DMFileRetrieval.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Utils.cs" />
     <Compile Include="Wifi\WifiDetails.xaml.cs">
       <DependentUpon>WifiDetails.xaml</DependentUpon>
     </Compile>
@@ -226,15 +262,15 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Include="CertificateDetails.xaml">
+    <Page Include="Certificates\CertificateDetails.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Include="CertificateExportDetails.xaml">
+    <Page Include="Certificates\CertificateExportDetails.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Include="CertificateSelector.xaml">
+    <Page Include="Certificates\CertificateSelector.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
@@ -255,6 +291,50 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="DeviceHealthAttestation\DeviceHealthAttestationReportedStateControl.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="DiagnosticLogs\CollectorDesiredStateControl.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="DiagnosticLogs\CollectorReportedStateControl.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="DiagnosticLogs\CollectorsDesiredStateControl.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="DiagnosticLogs\CollectorsReportedStateControl.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="DiagnosticLogs\ProviderDesiredStateControl.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="DiagnosticLogs\ProviderDesiredStateListControl.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="DiagnosticLogs\ProviderReportedStateControl.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="DiagnosticLogs\ProviderReportedStateListControl.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="DMFileRetrievalDialog.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="StorageManagement\DeviceDMStorage.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="StorageManagement\DMFileRetrieval.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
@@ -290,11 +370,11 @@
       <DependentUpon>AzureBlobSelector.xaml</DependentUpon>
     </Compile>
     <Compile Include="AzureStorageHelpers.cs" />
-    <Compile Include="CertificateDetails.xaml.cs">
+    <Compile Include="Certificates\CertificateDetails.xaml.cs">
       <DependentUpon>CertificateDetails.xaml</DependentUpon>
     </Compile>
-    <Compile Include="CertificateHelpers.cs" />
-    <Compile Include="CertificateSelector.xaml.cs">
+    <Compile Include="Certificates\CertificateHelpers.cs" />
+    <Compile Include="Certificates\CertificateSelector.xaml.cs">
       <DependentUpon>CertificateSelector.xaml</DependentUpon>
     </Compile>
     <Compile Include="DeviceTwinAndMethod.cs" />

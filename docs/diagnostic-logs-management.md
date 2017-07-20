@@ -72,7 +72,7 @@ Below is what the schema looks like:
             "reportProperties" : "yes"|"no",
             "applyProperties_4" : {collector configuration object}|"no"
             },
-        "?" : "onlyCollectorNames" | "detailed" | "none"
+        "?" : "detailed" | "minimal" | "none"
         }
     }
 }
@@ -85,8 +85,8 @@ Below is what the schema looks like:
             - `"no"`: indicates no properties to apply from the device twin. This makes sense only if the collector is already defined on the device and the user does not want to modify it.
             - `{collector configuration object}`: defines the collector configurations to apply. See below for more details.
     - `"?"`: specifies what that the DM client should report about the existing collectors. This can be used to enumerate defined collectors.
-      - `"onlyCollectorNames"`: report only the names of the defined collectors.
       - `"detailed"`: report all details.
+      - `"minimal"`: report only the names of the defined collectors.
       - `"none"`: don't report except those that are marked to be reported in the desired section.
 
 ### Collector Configuration Object
@@ -96,7 +96,7 @@ Below is what the schema looks like:
     "traceLogFileMode" : "sequential"|"circular",
     "logFileSizeLimitMB" : "<i>limit</i>",
     "logFileFolder" : "<i>collectorFolderName</i>",
-    "start" : "yes" | "no",
+    "started" : "yes" | "no",
     "guid00_5" : {provider configuration object},
     "guid01_5" : {provider configuration object}
 }
@@ -105,7 +105,7 @@ Below is what the schema looks like:
 - `"traceLogFileMode"`: specifies the log file logging mode. Allowed values are `"sequential"` or `"circular"`.
 - `"logFileSizeLimitMB"`: specifies the limit for the log file in megabytes. The default value is 4, and the acceptable range is 1-2048.
 - `"collectorFolderName"`: specifies the relative path to the user's data folder where the log files of that collector will be saved once collection stops. The files can later be enumerated and uploaded to Azure Storage. See below for more details.
-- `"start"`: specifies whether the collector should be active (i.e. collecting) or not. Its value is applied everytime the DM client service starts, or the property changes.
+- `"started"`: specifies whether the collector should be active (i.e. collecting) or not. Its value is applied everytime the DM client service starts, or the property changes.
   - If this is set to `"yes"`, the collector will be started (if it is not already).
   - If this is set to `"no"`, the collector will be stopped, and a file will be saved in <i>logFileFolder</i> (if it is already running).
 - `"guid00"`: specifies the <i>provider configuration object</i> for this guid. See below for more details.
@@ -131,7 +131,7 @@ Below is what the schema looks like:
 Collectors are reported if:
 
 - They are defined in the desired section and their `"reportProperties"` is set to `"yes"`. For those, all details are always reported.
-- The `"?"` is specified in the collectors list in the desired properties section. The level of details will depend on its value - `"detailed"` or `"onlyCollectorNames"`.
+- The `"?"` is specified in the collectors list in the desired properties section. The level of details will depend on its value - `"detailed"` or `"minimal"`.
 
 The reporting for `"detailed"` looks like this:
 
@@ -139,12 +139,12 @@ The reporting for `"detailed"` looks like this:
 "windows_1" : {
     "eventTracingLogs_2" : {
         "collectorName00_3" : {
-            "traceStatus" : "stopped"|"started",
             "traceLogFileMode" : "sequentual"|"circular"",
             "logFileSizeLimitMB" : "4",
             "logFileFolder" : "collectorFolderName",
+            "started" : "yes"|"no",
             "guid00_4" : {
-                "traceLevel" : "",
+                "traceLevel": "critical"|"error"|"warning"|"information"|"verbose",
                 "keywords" : "",
                 "enabled" : true|false,
                 "type" : "provider"
@@ -154,7 +154,7 @@ The reporting for `"detailed"` looks like this:
 }
 </pre>
 
-The reporting for `"onlyCollectorNames"` looks like this:
+The reporting for `"minimal"` looks like this:
 <pre>
 "windows_1" : {
     "eventTracingLogs_2" : {

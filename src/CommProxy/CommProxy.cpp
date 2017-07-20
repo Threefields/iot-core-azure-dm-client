@@ -31,50 +31,74 @@ Blob^ GetResponseFromSystemConfigurator(Blob^ request, const wchar_t* pipeName)
 
     Utils::AutoCloseHandle pipeHandle;
     int waitAttemptsLeft = 10;
+    Blob^ response;
+    bool writeOk = false;
+    bool readOk = false;
+    do {
 
-    while (waitAttemptsLeft--)
-    {
-        TRACE("Attempting to connect to system configurator pipe...");
-
-        pipeHandle.SetHandle(CreateFileW(pipeName,
-            GENERIC_READ | GENERIC_WRITE,
-            0,
-            NULL,
-            OPEN_EXISTING,
-            0,
-            NULL));
-
-        // Break if the pipe handle is valid.
-        if (pipeHandle.Get() != INVALID_HANDLE_VALUE)
+        while (waitAttemptsLeft--)
         {
-            break;
+            TRACE("Attempting to connect to system configurator pipe...");
+
+            pipeHandle.SetHandle(CreateFileW(pipeName,
+                GENERIC_READ | GENERIC_WRITE,
+                0,
+                NULL,
+                OPEN_EXISTING,
+                0,
+                NULL));
+
+            // Break if the pipe handle is valid.
+            if (pipeHandle.Get() != INVALID_HANDLE_VALUE)
+            {
+                break;
+            }
+
+            // Exit if an error other than ERROR_PIPE_BUSY occurs
+            if (GetLastError() != ERROR_PIPE_BUSY)
+            {
+                throw ref new Exception(HRESULT_FROM_WIN32(GetLastError()), "Cannot open pipe. Make sure SystemConfigurator is running");
+            }
+
+            // All pipe instances are busy, so wait for a maximum of 1 second
+            // or until an instance becomes available.
+            WaitNamedPipe(PipeName, 1000);
         }
 
-        // Exit if an error other than ERROR_PIPE_BUSY occurs
-        if (GetLastError() != ERROR_PIPE_BUSY)
+        if (pipeHandle.Get() == INVALID_HANDLE_VALUE || pipeHandle.Get() == NULL)
         {
-            throw ref new Exception(HRESULT_FROM_WIN32(GetLastError()), "Cannot open pipe. Make sure SystemConfigurator is running");
+            throw ref new Exception(E_FAIL, "Failed to connect to SystemConfigurator pipe...");
         }
 
-        // All pipe instances are busy, so wait for a maximum of 1 second
-        // or until an instance becomes available.
-        WaitNamedPipe(PipeName, 1000);
-    }
+        TRACE("Connected successfully to SystemConfigurator pipe...");
 
-    if (pipeHandle.Get() == INVALID_HANDLE_VALUE || pipeHandle.Get() == NULL)
-    {
-        throw ref new Exception(E_FAIL, "Failed to connect to SystemConfigurator pipe...");
-    }
+        if (!writeOk)
+        {
+            TRACE("Writing request to pipe...");
+            request->WriteToNativeHandle(pipeHandle.Get64());
+            writeOk = true;
+        }
 
-    TRACE("Connected successfully to pipe...");
-
-    TRACE("Writing request to pipe...");
-
-    request->WriteToNativeHandle(pipeHandle.Get64());
-
-    TRACE("Reading response from pipe...");
-
-    Blob^ response = Blob::ReadFromNativeHandle(pipeHandle.Get64());
+        if (!readOk)
+        {
+            TRACE("Reading response from SystemConfigurator pipe...");
+            TRACE("About to throw an exception...");
+            try
+            {
+                response = Blob::ReadFromNativeHandle(pipeHandle.Get64());
+                readOk = true;
+            }
+            catch (Exception^ e)
+            {
+                TRACEP("hresult = ", (uint32_t)e->HResult);
+                if (!(e->HResult == 233) && !(e->HResult == 0x80070057))
+                { 
+                    throw;
+                }
+                TRACE("We'll retry after reconnecting...");
+            }
+        }
+    } while (!writeOk || !readOk);
 
     TRACE("Done writing and reading.");
 
@@ -88,21 +112,25 @@ int main(Platform::Array<Platform::String^>^ args)
     Utils::AutoCloseHandle stdoutHandle(GetStdHandle(STD_OUTPUT_HANDLE));
     try
     {
-        TRACE("Reading request from stdin...");
-
+        TRACE("Reading request from stdin.............................................");
         Blob^ request = Blob::ReadFromNativeHandle(stdinHandle.Get64());
-        
 
         try
         {
             request->ValidateVersion();
 
+            TRACE("Talking with system configurator......................................................");
             Blob^ response = GetResponseFromSystemConfigurator(request, PipeName);
 
+            TRACE("Responding to UWP - writing to stdout.................................................");
             response->WriteToNativeHandle(stdoutHandle.Get64());
+
+            TRACE("CommProxy.exe. Done talking with UWP.");
         }
         catch (Exception^ ex)
         {
+            TRACE("Exception caught in CommProxy.exe!");
+
             auto response = ref new StringResponse(ResponseStatus::Failure, ex->Message, DMMessageKind::ErrorResponse);
             response->Serialize()->WriteToNativeHandle(stdoutHandle.Get64());
         }

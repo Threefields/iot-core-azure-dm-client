@@ -44,7 +44,7 @@ namespace Microsoft.Devices.Management
         {
             return new Dictionary<string, Func<string, Task<string>>>()
                 {
-                    { "microsoft.management.getWifiDetails" , GetWifiProfileDetailsAsync },
+                    { "windows.getWifiDetails" , GetWifiProfileDetailsAsync },
                 };
         }
 

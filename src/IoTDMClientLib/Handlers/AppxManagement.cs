@@ -1043,7 +1043,8 @@ namespace Microsoft.Devices.Management
         {
             UpdateCache(desiredValue);
 
-            // Need to revisit all the desired nodes (not only the changed ones) so that we can re-construct the correct reported list.
+            // Need to revisit all the desired nodes (not only the changed ones)
+            // so that we can re-construct the correct reported list.
             ApplyDesiredAppsConfiguration(_desiredCache[JsonSectionName]);
         }
 

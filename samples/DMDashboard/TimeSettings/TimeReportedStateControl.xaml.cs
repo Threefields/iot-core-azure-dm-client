@@ -26,17 +26,18 @@ namespace DMDashboard
 
         public void FromJson(JObject json)
         {
-            LocalTime.Text = (string)json.Property("localTime").Value;
-            NtpServer.Text = (string)json.Property("ntpServer").Value;
-            Bias.Text = (string)json.Property("timeZoneBias").Value;
-            StandardName.Text = (string)json.Property("timeZoneStandardName").Value;
-            StandardDate.Text = (string)json.Property("timeZoneStandardDate").Value;
-            StandardBias.Text = (string)json.Property("timeZoneStandardBias").Value;
-            StandardDayOfWeek.Text = (string)json.Property("timeZoneStandardDayOfWeek").Value;
-            DaylightName.Text = (string)json.Property("timeZoneDaylightName").Value;
-            DaylightDate.Text = (string)json.Property("timeZoneDaylightDate").Value;
-            DaylightBias.Text = (string)json.Property("timeZoneDaylightBias").Value;
-            DaylightDayOfWeek.Text = (string)json.Property("timeZoneDaylightDayOfWeek").Value;
+            string notFound = "<not found>";
+            LocalTime.Text = Utils.GetString(json, "localTime", notFound);
+            NtpServer.Text = Utils.GetString(json, "ntpServer", notFound);
+            Bias.Text = Utils.GetString(json, "timeZoneBias", notFound);
+            StandardName.Text = Utils.GetString(json, "timeZoneStandardName", notFound);
+            StandardDate.Text = Utils.GetString(json, "timeZoneStandardDate", notFound);
+            StandardBias.Text = Utils.GetString(json, "timeZoneStandardBias", notFound);
+            StandardDayOfWeek.Text = Utils.GetString(json, "timeZoneStandardDayOfWeek", notFound);
+            DaylightName.Text = Utils.GetString(json, "timeZoneDaylightName", notFound);
+            DaylightDate.Text = Utils.GetString(json, "timeZoneDaylightDate", notFound);
+            DaylightBias.Text = Utils.GetString(json, "timeZoneDaylightBias", notFound);
+            DaylightDayOfWeek.Text = Utils.GetString(json, "timeZoneDaylightDayOfWeek", notFound);
         }
     }
 }

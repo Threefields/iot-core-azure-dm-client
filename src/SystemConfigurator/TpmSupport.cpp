@@ -14,6 +14,7 @@ THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 #include "stdafx.h"
 #include "..\SharedUtilities\Logger.h"
+#include "..\SharedUtilities\Utils.h"
 #include "DMException.h"
 
 using namespace std;
@@ -44,6 +45,8 @@ static std::string RunLimpet(const std::wstring& params)
     swprintf_s(fullCommand, _countof(fullCommand), L"%s\\%s %s", sys32dir, L"limpet.exe", params.c_str());
 
     unsigned long returnCode;
+
+    TRACE(fullCommand);
 
     Utils::LaunchProcess(fullCommand, returnCode, output);
 

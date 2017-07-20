@@ -46,6 +46,7 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)Permissions\PermissionsTracer.h">
       <Filter>Headers\Permissions</Filter>
     </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)StringUtils.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="$(MSBuildThisFileDirectory)DMException.cpp">
@@ -76,5 +77,6 @@
     <ClCompile Include="$(MSBuildThisFileDirectory)Permissions\PermissionsTracer.cpp">
       <Filter>Sources\Permissions</Filter>
     </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)StringUtils.cpp" />
   </ItemGroup>
 </Project>

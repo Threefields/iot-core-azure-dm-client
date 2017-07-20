@@ -107,6 +107,38 @@
                                 <ColumnDefinition Width="40"/>
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
+                            <Button Grid.Column="0" Click="OnExpandDiagnosticLogs" Width="30" Content="+/-" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            <TextBlock Grid.Column="1" Margin="3" Text="Diagnostic Logs" FontSize="12" FontWeight="Bold" Width="200" HorizontalAlignment="Left"/>
+                        </Grid>
+                        <Grid x:Name="DiagnosticLogsGrid" Visibility="Collapsed">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="300"/>
+                                <ColumnDefinition Width="400"/>
+                                <ColumnDefinition Width="400"/>
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock Grid.Row="0" Grid.Column="1" Text="Desired" />
+                            <TextBlock Grid.Row="0" Grid.Column="2" Text="Reported" />
+
+                            <local:CollectorsDesiredStateControl Grid.Row="1" Grid.Column="1" Margin="3" x:Name="DesiredDiagnosticLogs"/>
+                            <local:CollectorsReportedStateControl Grid.Row="1" Grid.Column="2" Margin="3" x:Name="ReportedDiagnosticLogs"/>
+
+                            <Button Grid.Row="2" Grid.Column="1" Margin="3" Content="Configure Diagnostic Logs" Click="OnSetDiagnosticLogsInfo" />
+                            <Button Grid.Row="3" Grid.Column="1" Margin="3" Content="Manage Diagnostic Log Files" Click="OnManageDiagnosticLogFile" />
+                        </Grid>
+
+                        <Border BorderThickness="2" Margin="15" BorderBrush="DarkGray" Width="600" Height="1" />
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="40"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
                             <Button Grid.Column="0" Click="OnExpandWindowsUpdatePolicy" Width="30" Content="+/-" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                             <TextBlock Grid.Column="1" Margin="3" Text="Windows Update Policy" FontSize="12" FontWeight="Bold" Width="200" HorizontalAlignment="Left"/>
                         </Grid>

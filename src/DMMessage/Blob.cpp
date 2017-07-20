@@ -13,16 +13,35 @@ WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN 
 THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 #include "stdafx.h"
+#include <fstream>
+#include <iostream> 
+#include <iomanip>
+#include <sstream>
+
 #include "Models\AllModels.h"
 #include "Blob.h"
 
 #include "DMMessageSerialization.h"
+#include "../SharedUtilities/Logger.h"
 
 using namespace Platform;
 using namespace concurrency;
 
+using namespace std;
+
+#define LOG(message, param) {\
+basic_ostringstream<wchar_t> message0;\
+message0 << message << param;\
+LogFn(message0.str().c_str()); \
+}
+
 namespace Microsoft { namespace Devices { namespace Management { namespace Message
 {
+    void TraceHelper::Trace(const wchar_t* message)
+    {
+        TRACE(message);
+    }
+
     IDataPayload^ Blob::MakeMessage(MessageType messageType)
     {
         auto tag = this->Tag;
@@ -49,24 +68,45 @@ namespace Microsoft { namespace Devices { namespace Management { namespace Messa
 
     Blob^ Blob::ReadFromNativeHandle(uint64_t handle)
     {
+        return ReadFromNativeHandle(handle, TraceHelper::Trace);
+    }
+
+    Blob^ Blob::ReadFromNativeHandle(uint64_t handle, LogFnType LogFn)
+    {
         HANDLE pipeHandle = (HANDLE)handle;
+        LOG("ReadFromNativeHandle()", "");
+        LOG("  handle == ", handle);
+        LOG("  pipeHandle == ", pipeHandle);
+        LOG("  reading 1 == ", sizeof(uint32_t));
 
         DWORD readByteCount = 0;
         uint32_t totalSizInBytes = 0;
-        if (!ReadFile(pipeHandle, &totalSizInBytes, sizeof(uint32_t), &readByteCount, NULL) || readByteCount != sizeof(uint32_t))
+        if (!ReadFile(pipeHandle, &totalSizInBytes, sizeof(uint32_t), &readByteCount, NULL))
         {
-            throw ref new Exception(E_FAIL, "Cannot read buffer size from pipe");
+            DWORD errCode = GetLastError();
+            LOG("  ReadFile() - 1a - failed. GetLastError() = ", errCode);
+            throw ref new Exception(errCode, "ReadFile() failed to read payload size from pipe.");
+        }
+
+        if (readByteCount != sizeof(uint32_t))
+        {
+            LOG("  ReadFile() - 1b - failed. readByteCount = ", readByteCount);
+            throw ref new Exception(E_FAIL, "Payload size could not be read.");
         }
 
         auto bytes = ref new Array<uint8_t>(totalSizInBytes);
 
+        LOG("  reading 2 payload size == ", totalSizInBytes);
         if (!ReadFile(pipeHandle, bytes->Data, totalSizInBytes, &readByteCount, NULL))
         {
-            throw ref new Exception(E_FAIL, "Cannot read data from pipe");
+            DWORD errCode = GetLastError();
+            LOG("  ReadFile() - 2 - failed. GetLastError() = ", errCode);
+            throw ref new Exception(errCode, "Cannot read data from pipe");
         }
 
-        return CreateFromByteArray(bytes);
+        FlushFileBuffers(pipeHandle);
 
+        return CreateFromByteArray(bytes);
     }
 
     void ValidateDataSize(uint32_t minexpected, uint32_t actual)
@@ -100,20 +140,40 @@ namespace Microsoft { namespace Devices { namespace Management { namespace Messa
 
     void Blob::WriteToNativeHandle(uint64_t handle)
     {
+        WriteToNativeHandle(handle, TraceHelper::Trace);
+    }
+
+    void Blob::WriteToNativeHandle(uint64_t handle, LogFnType LogFn)
+    {
         HANDLE pipeHandle = (HANDLE)handle;
+
+        LOG("WriteToNativeHandle()", "");
+        LOG("  handle == ", handle);
+        LOG("  pipeHandle == ", pipeHandle);
+        LOG("  writing 1 == ", sizeof(uint32_t));
 
         DWORD byteWrittenCount = 0;
         uint32_t totalSizInBytes = this->bytes->Length;
+        LOG("  writing 2 payload size == ", totalSizInBytes);
+
         if (!WriteFile(pipeHandle, &totalSizInBytes, sizeof(uint32_t), &byteWrittenCount, NULL) || byteWrittenCount != sizeof(uint32_t))
         {
-            throw ref new Exception(E_FAIL, "Cannot write buffer size to pipe");
+            DWORD errCode = GetLastError();
+            LOG("  WriteFile() failed. GetLastError() = ", errCode);
+            throw ref new Exception(errCode, "Cannot write buffer size to pipe");
         }
 
         byteWrittenCount = 0;
+        LOG("  writing 3 ", "");
         if (!WriteFile(pipeHandle, this->bytes->Data, totalSizInBytes, &byteWrittenCount, NULL))
         {
-            throw ref new Exception(E_FAIL, "Cannot write blob to pipe");
+            DWORD errCode = GetLastError();
+            LOG("  WriteFile() failed. GetLastError() = ", errCode);
+            throw ref new Exception(errCode, "Cannot write blob to pipe");
         }
+
+        FlushFileBuffers(pipeHandle);
+
     }
 
     IAsyncAction^ Blob::WriteToIOutputStreamAsync(IOutputStream^ iostream)

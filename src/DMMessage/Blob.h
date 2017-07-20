@@ -33,6 +33,14 @@ namespace Microsoft { namespace Devices { namespace Management { namespace Messa
         Response
     };
 
+    typedef void(LogFnType)(const wchar_t* message);
+
+    class TraceHelper
+    {
+    public:
+        static void Trace(const wchar_t* message);
+    };
+
     //
     // Blob is a thin wrapper around a byte array with an 8-byte prefix (version + kind)
     //
@@ -49,14 +57,18 @@ namespace Microsoft { namespace Devices { namespace Management { namespace Messa
 
         IDataPayload^ MakeMessage(MessageType);
 
+        friend TraceHelper;
+        static Blob^ ReadFromNativeHandle(uint64_t handle, LogFnType LogFn);
+        void WriteToNativeHandle(uint64_t handle, LogFnType LogFn);
+
     public:
 
         // Only used for testing, clients should not use
         static Blob^ CreateFromByteArray(const Array<uint8_t>^ bytes);
 
         // Serialization
-        static Blob^ ReadFromNativeHandle(uint64_t handle);
         static IAsyncOperation<Blob^>^ ReadFromIInputStreamAsync(IInputStream^ iistream);
+        static Blob^ ReadFromNativeHandle(uint64_t handle);
 
         void WriteToNativeHandle(uint64_t handle);
         IAsyncAction^ WriteToIOutputStreamAsync(IOutputStream^ iostream);

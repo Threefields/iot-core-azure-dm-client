@@ -21,7 +21,6 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 
-
 using Microsoft.Azure.Devices;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -32,11 +31,18 @@ using System.Configuration;
 using Microsoft.Win32;
 using System.IO;
 using Microsoft.Devices.Management.DMDataContract;
+using DMDashboard.StorageManagement;
 
 namespace DMDashboard
 {
     public partial class MainWindow : Window
     {
+        const string DTRefreshing = "\"refreshing\"";
+        const string DTDesiredValuePrefix = "{ \"properties\" : { \"desired\" : { \"windows\" : ";
+        const string DTDesiredValueSuffix = "}}}";
+        const string DTDesiredObjectPrefix = DTDesiredValuePrefix + " {";
+        const string DTDesiredObjectSuffix = DTDesiredValueSuffix + "}";
+
         enum AppLifeCycleAction
         {
             startApp,
@@ -130,6 +136,11 @@ namespace DMDashboard
             ToggleUIElementVisibility(WindowsUpdatesGrid);
         }
 
+        private void OnExpandDiagnosticLogs(object sender, RoutedEventArgs e)
+        {
+            ToggleUIElementVisibility(DiagnosticLogsGrid);
+        }
+
         private void OnExpandCertificates(object sender, RoutedEventArgs e)
         {
             ToggleUIElementVisibility(CertificateStackPanel);
@@ -187,7 +198,7 @@ namespace DMDashboard
             parameters.pkgFamilyName = packageFamilyName;
             string parametersString = JsonConvert.SerializeObject(parameters);
             CancellationToken cancellationToken = new CancellationToken();
-            DeviceMethodReturnValue result = await _deviceTwin.CallDeviceMethod("microsoft.management.manageAppLifeCycle", parametersString, new TimeSpan(0, 0, 30), cancellationToken);
+            DeviceMethodReturnValue result = await _deviceTwin.CallDeviceMethod("windows.manageAppLifeCycle", parametersString, new TimeSpan(0, 0, 30), cancellationToken);
             MessageBox.Show("Reboot Command Result:\nStatus: " + result.Status + "\nReason: " + result.Payload);
         }
 
@@ -306,15 +317,8 @@ namespace DMDashboard
 
             JObject jsonObject = (JObject)JsonConvert.DeserializeObject(deviceTwinData.reportedPropertiesJson);
 
-            JToken microsoftNode;
-            if (!jsonObject.TryGetValue("microsoft", out microsoftNode) || microsoftNode.Type != JTokenType.Object)
-            {
-                return;
-            }
-            JObject microsoftObject = (JObject)microsoftNode;
-
             JToken managementNode;
-            if (!microsoftObject.TryGetValue("management", out managementNode) || managementNode.Type != JTokenType.Object)
+            if (!jsonObject.TryGetValue("windows", out managementNode) || managementNode.Type != JTokenType.Object)
             {
                 return;
             }
@@ -368,6 +372,11 @@ namespace DMDashboard
                 {
                     Debug.WriteLine(jsonProp.Value.ToString());
                     this.WifiReportedState.FromJson(jsonProp.Value);
+                }
+                else if (jsonProp.Name == "eventTracingCollectors")
+                {
+                    Debug.WriteLine(jsonProp.Value.ToString());
+                    this.ReportedDiagnosticLogs.FromReportedJson((JObject)jsonProp.Value);
                 }
             }
         }
@@ -428,7 +437,7 @@ namespace DMDashboard
         private async void RebootSystemAsync()
         {
             CancellationToken cancellationToken = new CancellationToken();
-            DeviceMethodReturnValue result = await _deviceTwin.CallDeviceMethod("microsoft.management.immediateReboot", "{}", new TimeSpan(0, 0, 30), cancellationToken);
+            DeviceMethodReturnValue result = await _deviceTwin.CallDeviceMethod("windows.immediateReboot", "{}", new TimeSpan(0, 0, 30), cancellationToken);
             MessageBox.Show("Reboot Command Result:\nStatus: " + result.Status + "\nReason: " + result.Payload);
         }
 
@@ -447,7 +456,7 @@ namespace DMDashboard
             Debug.WriteLine("Reset params : " + resetParamsString);
 
             CancellationToken cancellationToken = new CancellationToken();
-            DeviceMethodReturnValue result = await _deviceTwin.CallDeviceMethod("microsoft.management.factoryReset", resetParamsString, new TimeSpan(0, 0, 30), cancellationToken);
+            DeviceMethodReturnValue result = await _deviceTwin.CallDeviceMethod("windows.factoryReset", resetParamsString, new TimeSpan(0, 0, 30), cancellationToken);
             // ToDo: it'd be nice to show the result in the UI.
         }
 
@@ -459,7 +468,7 @@ namespace DMDashboard
         private async void StartAppSelfUpdate()
         {
             CancellationToken cancellationToken = new CancellationToken();
-            DeviceMethodReturnValue result = await _deviceTwin.CallDeviceMethod("microsoft.management.startAppSelfUpdate", "{}", new TimeSpan(0, 0, 30), cancellationToken);
+            DeviceMethodReturnValue result = await _deviceTwin.CallDeviceMethod("windows.startAppSelfUpdate", "{}", new TimeSpan(0, 0, 30), cancellationToken);
             StartAppSelfUpdateResult.Text = result.Payload;
         }
 
@@ -471,7 +480,7 @@ namespace DMDashboard
         private async void UpdateDTReportedAsync()
         {
             CancellationToken cancellationToken = new CancellationToken();
-            DeviceMethodReturnValue result = await _deviceTwin.CallDeviceMethod("microsoft.management.reportAllDeviceProperties", "{}", new TimeSpan(0, 0, 30), cancellationToken);
+            DeviceMethodReturnValue result = await _deviceTwin.CallDeviceMethod("windows.reportAllDeviceProperties", "{}", new TimeSpan(0, 0, 30), cancellationToken);
             // ToDo: it'd be nice to show the result in the UI.
         }
 
@@ -494,21 +503,29 @@ namespace DMDashboard
             return rebootInfo;
         }
 
-        private void SetDesired(string sectionString)
+        private async Task UpdateTwinData(string jsonString)
         {
-            string prefix = "{ \"properties\" : {\"desired\":{\"microsoft\":{\"management\":{";
-            string suffix = "}}}}}";
-            string jsonString = prefix + sectionString + suffix; // "{ \"properties\" : " + JsonConvert.SerializeObject(root) + "}";
             Debug.WriteLine("---- Desired Properties ----");
             Debug.WriteLine(jsonString);
 
             // Task t is to avoid the 'not awaited' warning.
-            Task t = _deviceTwin.UpdateTwinData(jsonString);
+            await _deviceTwin.UpdateTwinData(jsonString);
+        }
+
+        private async Task SetDesired(string sectionName, string sectionValueString)
+        {
+            string refreshingString = "\"" + sectionName + "\" : \"refreshing\"";
+
+            // Remove existing...
+            await UpdateTwinData(DTDesiredObjectPrefix + refreshingString + DTDesiredObjectSuffix);
+
+            // (Re-)Add section...
+            await UpdateTwinData(DTDesiredObjectPrefix + sectionValueString + DTDesiredObjectSuffix);
         }
 
         private void OnSetTimeInfo(object sender, RoutedEventArgs e)
         {
-            SetDesired(TimeDesiredState.ToJson());
+            SetDesired(TimeDesiredState.SectionName, TimeDesiredState.ToJson());
         }
 
         private ExternalStorage UIToExternalStorageModel()
@@ -520,12 +537,26 @@ namespace DMDashboard
 
         private void OnSetExternalStorageInfo(object sender, RoutedEventArgs e)
         {
-            SetDesired(UIToExternalStorageModel().ToJson());
+            ExternalStorage externalStorage = UIToExternalStorageModel();
+            SetDesired(externalStorage.SectionName, externalStorage.ToJson());
         }
 
         private void OnSetWindowsUpdatePolicyInfo(object sender, RoutedEventArgs e)
         {
-            SetDesired(DesiredWindowsUpdatePolicy.ToJson());
+            SetDesired(DesiredWindowsUpdatePolicy.SectionName, DesiredWindowsUpdatePolicy.ToJson());
+        }
+
+        private void OnSetDiagnosticLogsInfo(object sender, RoutedEventArgs e)
+        {
+            SetDesired(DesiredDiagnosticLogs.SectionName, DesiredDiagnosticLogs.ToJson());
+        }
+
+        private void OnManageDiagnosticLogFile(object sender, RoutedEventArgs e)
+        {
+            DeviceDMStorage deviceDMStorage = new DeviceDMStorage(_deviceTwin);
+            deviceDMStorage.Owner = this;
+            deviceDMStorage.DataContext = null;
+            deviceDMStorage.ShowDialog();
         }
 
         private Microsoft.Devices.Management.WindowsUpdates.SetParams UIToWindowsUpdatesConfiguration()
@@ -550,7 +581,8 @@ namespace DMDashboard
 
         private void OnSetWindowsUpdatesInfo(object sender, RoutedEventArgs e)
         {
-            SetDesired(UIToWindowsUpdatesConfiguration().ToJson());
+            Microsoft.Devices.Management.WindowsUpdates.SetParams setParams = UIToWindowsUpdatesConfiguration();
+            SetDesired(setParams.SectionName, setParams.ToJson());
         }
 
         private Certificates.CertificateConfiguration UIToCertificateConfiguration()
@@ -569,17 +601,19 @@ namespace DMDashboard
 
         private void OnSetCertificateConfiguration(object sender, RoutedEventArgs e)
         {
-            SetDesired(UIToCertificateConfiguration().ToJson());
+            Certificates.CertificateConfiguration certificateConfiguration = UIToCertificateConfiguration();
+            SetDesired(certificateConfiguration.SectionName, certificateConfiguration.ToJson());
         }
 
         private void OnSetRebootInfo(object sender, RoutedEventArgs e)
         {
-            SetDesired(UIToRebootInfoModel().ToJson());
+            Microsoft.Devices.Management.RebootInfo.SetParams setParams = UIToRebootInfoModel();
+            SetDesired(setParams.SectionName, setParams.ToJson());
         }
 
         private void OnSetAppsConfiguration(object sender, RoutedEventArgs e)
         {
-            SetDesired(TheAppsConfigurator.GetJSon());
+            SetDesired(TheAppsConfigurator.SectionName, TheAppsConfigurator.ToJson());
         }
 
         private void OnSetAllDesiredProperties(object sender, RoutedEventArgs e)
@@ -602,7 +636,8 @@ namespace DMDashboard
             json.Append(",");
             json.Append(WifiDesiredState.ToJson());
 
-            SetDesired(json.ToString());
+            UpdateTwinData(DTDesiredValuePrefix + DTRefreshing + DTDesiredValueSuffix);
+            UpdateTwinData(DTDesiredObjectPrefix + json.ToString() + DTDesiredObjectSuffix);
         }
 
         private void OnExpandApps(object sender, RoutedEventArgs e)
@@ -659,7 +694,7 @@ namespace DMDashboard
 
         private void DeviceHealthAttestationSetInfoButtonAsync(object sender, RoutedEventArgs e)
         {
-            SetDesired(DeviceHealthAttestationDesiredState.ToJson());
+            SetDesired(DeviceHealthAttestationDesiredState.SectionName, DeviceHealthAttestationDesiredState.ToJson());
         }
 
         private void OnExpandAzureStorageExplorer(object sender, RoutedEventArgs e)
@@ -679,7 +714,7 @@ namespace DMDashboard
             Debug.WriteLine(parametersJson);
 
             CancellationToken cancellationToken = new CancellationToken();
-            return await _deviceTwin.CallDeviceMethod("microsoft.management.getCertificateDetails", parametersJson, new TimeSpan(0, 0, 30), cancellationToken);
+            return await _deviceTwin.CallDeviceMethod("windows.getCertificateDetails", parametersJson, new TimeSpan(0, 0, 30), cancellationToken);
         }
 
         private void ShowCertificateDetails(CertificateSelector sender, CertificateSelector.CertificateData certificateData)
@@ -725,7 +760,7 @@ namespace DMDashboard
 
         private void OnSetWifiConfiguration(object sender, RoutedEventArgs e)
         {
-            SetDesired(WifiDesiredState.ToJson());
+            SetDesired(WifiDesiredState.SectionName, WifiDesiredState.ToJson());
         }
 
         public async void ExportWifiProfileDetails(string profileName, string storageConnectionString, string storageContainer, string blobName)
@@ -741,13 +776,13 @@ namespace DMDashboard
             Debug.WriteLine(parametersJson);
 
             var cancellationToken = new CancellationToken();
-            DeviceMethodReturnValue result = await this._deviceTwin.CallDeviceMethod("microsoft.management.getWifiDetails", parametersJson, new TimeSpan(0, 0, 30), cancellationToken);
+            DeviceMethodReturnValue result = await this._deviceTwin.CallDeviceMethod("windows.getWifiDetails", parametersJson, new TimeSpan(0, 0, 30), cancellationToken);
             MessageBox.Show("Get Wifi Profile Details Command Result:\nStatus: " + result.Status + "\nReason: " + result.Payload);
         }
 
         private void PopulateExternalStorageFromJson(JObject jRoot)
         {
-            JToken jToken = jRoot.SelectToken("properties.desired.microsoft.management.externalStorage.connectionString");
+            JToken jToken = jRoot.SelectToken("properties.desired.windows.externalStorage.connectionString");
             if (jToken != null && jToken is JValue)
             {
                 JValue jConnectionString = (JValue)jToken;
@@ -774,7 +809,8 @@ namespace DMDashboard
 
             JObject jRoot = (JObject)rootObject;
             PopulateExternalStorageFromJson(jRoot);
-            TheAppsConfigurator.PopulateFromJson(jRoot);
+            TheAppsConfigurator.FromJson(jRoot);
+            DesiredDiagnosticLogs.FromDesiredJson(jRoot);
         }
 
         private DeviceTwinAndMethod _deviceTwin;
