@@ -104,21 +104,7 @@ namespace DMDashboard
             return "\"" + SectionName + "\" : {\n" + sb.ToString() + "\n}";
         }
 
-        public void FromReportedJson(JObject jRoot)
-        {
-            List<CollectorDesiredState> collectors = new List<CollectorDesiredState>();
-            foreach (JProperty property in jRoot.Children())
-            {
-                CollectorDesiredState collectorDesiredState = CollectorDesiredState.CollectorReportedStateFromJson(property.Name, property.Value);
-                if (collectorDesiredState != null)
-                {
-                    collectors.Add(collectorDesiredState);
-                }
-            }
-            CollectorsConfigurations = collectors;
-        }
-
-        public void FromDesiredJson(JObject jRoot)
+        public void FromJson(JObject jRoot)
         {
             JToken collectorsToken = jRoot.SelectToken("properties.desired.windows." + SectionName);
             if (collectorsToken == null || !(collectorsToken is JObject))
@@ -130,7 +116,7 @@ namespace DMDashboard
             List<CollectorDesiredState> collectors = new List<CollectorDesiredState>();
             foreach (JProperty property in collectorsObject.Children())
             {
-                CollectorDesiredState collectorDesiredState = CollectorDesiredState.CollectorDesiredStateFromJson(property.Name, property.Value);
+                CollectorDesiredState collectorDesiredState = CollectorDesiredState.FromJson(property.Name, property.Value);
                 if (collectorDesiredState != null)
                 {
                     collectors.Add(collectorDesiredState);

@@ -14,6 +14,7 @@ THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 using Newtonsoft.Json.Linq;
+using System.Collections.Generic;
 using System.Diagnostics;
 
 namespace DMDashboard
@@ -41,7 +42,7 @@ namespace DMDashboard
                 }
                 else
                 {
-                    Debug.WriteLine($"Property {propertyName} found but its type is not a string!");
+                    Debug.WriteLine($"Property {propertyName} found but its type is not string!");
                 }
             }
             return defaultValue;
@@ -58,11 +59,43 @@ namespace DMDashboard
                 }
                 else
                 {
-                    Debug.WriteLine($"Property {propertyName} found but its type is not a boolean!");
+                    Debug.WriteLine($"Property {propertyName} found but its type is not boolean!");
                 }
             }
             return defaultValue;
         }
 
+        public static string [] GetStringArray(JObject jObj, string propertyName)
+        {
+            List<string> list = new List<string>();
+
+            JToken jValue;
+            if (jObj.TryGetValue(propertyName, out jValue))
+            {
+                if (jValue.Type == JTokenType.Array)
+                {
+                    JArray jsonArray = (JArray)jValue;
+                    foreach (object o in jsonArray)
+                    {
+                        if (!(o is JValue))
+                        {
+                            continue;
+                        }
+                        JValue v = (JValue)o;
+                        if (!(v.Value is string))
+                        {
+                            continue;
+                        }
+                        list.Add((string)v.Value);
+                    }
+                }
+                else
+                {
+                    Debug.WriteLine($"Property {propertyName} found but its type is not array!");
+                }
+            }
+
+            return list.ToArray();
+        }
     }
 }

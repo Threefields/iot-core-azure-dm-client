@@ -14,26 +14,20 @@ THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 using Newtonsoft.Json.Linq;
-using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
 
 namespace DMDashboard
 {
     public partial class CollectorsReportedStateControl : UserControl
     {
-        private static string SectionName = "eventTracingCollectors";
+        public string SectionName
+        {
+            get
+            {
+                return "eventTracingCollectors";
+            }
+        }
 
         public List<CollectorReportedState> CollectorsConfigurations
         {
@@ -65,12 +59,12 @@ namespace DMDashboard
             InitializeComponent();
         }
 
-        public void FromReportedJson(JObject jRoot)
+        public void FromJson(JObject jRoot)
         {
             List<CollectorReportedState> collectors = new List<CollectorReportedState>();
             foreach (JProperty property in jRoot.Children())
             {
-                CollectorReportedState collectorReportedState = CollectorReportedState.CollectorReportedStateFromJson(property.Name, property.Value);
+                CollectorReportedState collectorReportedState = CollectorReportedState.FromJson(property.Name, property.Value);
                 if (collectorReportedState != null)
                 {
                     collectors.Add(collectorReportedState);

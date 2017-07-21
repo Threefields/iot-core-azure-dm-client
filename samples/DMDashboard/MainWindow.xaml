@@ -130,7 +130,7 @@
                             <local:CollectorsReportedStateControl Grid.Row="1" Grid.Column="2" Margin="3" x:Name="ReportedDiagnosticLogs"/>
 
                             <Button Grid.Row="2" Grid.Column="1" Margin="3" Content="Configure Diagnostic Logs" Click="OnSetDiagnosticLogsInfo" />
-                            <Button Grid.Row="3" Grid.Column="1" Margin="3" Content="Manage Diagnostic Log Files" Click="OnManageDiagnosticLogFile" />
+                            <Button Grid.Row="3" Grid.Column="1" Margin="3" Content="Manage Device DM Storage" Click="OnManageDMStorage" />
                         </Grid>
 
                         <Border BorderThickness="2" Margin="15" BorderBrush="DarkGray" Width="600" Height="1" />

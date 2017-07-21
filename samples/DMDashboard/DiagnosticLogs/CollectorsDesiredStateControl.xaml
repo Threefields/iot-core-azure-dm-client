@@ -15,7 +15,7 @@
                 <ColumnDefinition Width="100"/>
             </Grid.ColumnDefinitions>
             <TextBlock Grid.Row="1" Grid.Column="0" Margin="3" Text="Reporting Collectors not in DeviceTwin"/>
-            <ComboBox Grid.Row="1" Grid.Column="1" Margin="3" x:Name="NonDeviceTwinCollectors" SelectedItem="2">
+            <ComboBox Grid.Row="1" Grid.Column="1" Margin="3" x:Name="NonDeviceTwinCollectors" SelectedIndex="2">
                 <ComboBoxItem>Detailed</ComboBoxItem>
                 <ComboBoxItem>Minimal</ComboBoxItem>
                 <ComboBoxItem>None</ComboBoxItem>

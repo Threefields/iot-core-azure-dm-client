@@ -203,9 +203,6 @@
     <Compile Include="DiagnosticLogs\ProviderReportedStateListControl.xaml.cs">
       <DependentUpon>ProviderReportedStateListControl.xaml</DependentUpon>
     </Compile>
-    <Compile Include="DMFileRetrievalDialog.xaml.cs">
-      <DependentUpon>DMFileRetrievalDialog.xaml</DependentUpon>
-    </Compile>
     <Compile Include="StorageManagement\DeviceDMStorage.xaml.cs">
       <DependentUpon>DeviceDMStorage.xaml</DependentUpon>
     </Compile>
@@ -323,10 +320,6 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="DiagnosticLogs\ProviderReportedStateListControl.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="DMFileRetrievalDialog.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>

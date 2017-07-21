@@ -17,7 +17,6 @@ using DMDataContract;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Globalization;
 using System.Windows.Controls;
 using System.Windows.Data;
@@ -65,7 +64,7 @@ namespace DMDashboard
             Started = "yes";
         }
 
-        public static CollectorDesiredState CollectorDesiredStateFromJson(string collectorName, JToken jValueToken)
+        public static CollectorDesiredState FromJson(string collectorName, JToken jValueToken)
         {
             if (!(jValueToken is JObject))
             {
@@ -127,60 +126,6 @@ namespace DMDashboard
 
             return collectorDesiredState;
         }
-
-        public static CollectorDesiredState CollectorReportedStateFromJson(string collectorName, JToken jValueToken)
-        {
-            if (!(jValueToken is JObject))
-            {
-                return null;
-            }
-            JObject jValueObject = (JObject)jValueToken;
-
-            CollectorDesiredState collectorDesiredState = new CollectorDesiredState();
-
-            collectorDesiredState.Name = collectorName;
-            collectorDesiredState.ReportProperties = "yes";
-            collectorDesiredState.ApplyProperties = "yes";
-
-            foreach (JToken token in jValueObject.Children())
-            {
-                if (!(token is JProperty))
-                {
-                    continue;
-                }
-                JProperty jProperty = (JProperty)token;
-
-                switch (jProperty.Name)
-                {
-                    case "traceLogFileMode":
-                        collectorDesiredState.TraceLogFileMode = (string)jProperty.Value;
-                        break;
-                    case "logFileSizeLimitMB":
-                        collectorDesiredState.LogFileSizeLimitMB = (int)jProperty.Value;
-                        break;
-                    case "logFileFolder":
-                        collectorDesiredState.LogFileFolder = (string)jProperty.Value;
-                        break;
-                    case "started":
-                        collectorDesiredState.Started = (string)jProperty.Value;
-                        break;
-                    default:
-                        ProviderDesiredState providerDesiredState = ProviderDesiredState.ProviderDesiredStateFromJson(jProperty.Name, jProperty.Value);
-                        if (providerDesiredState != null)
-                        {
-                            if (collectorDesiredState.ProviderList == null)
-                            {
-                                collectorDesiredState.ProviderList = new List<ProviderDesiredState>();
-                            }
-                            collectorDesiredState.ProviderList.Add(providerDesiredState);
-
-                        }
-                        break;
-                }
-            }
-
-            return collectorDesiredState;
-        }
     }
 
     public partial class CollectorDesiredStateControl : DMSectionControl
@@ -214,7 +159,6 @@ namespace DMDashboard
             }
         }
 
-        // ToDo: do all similar objects share this?
         public override string SectionName
         {
             get
@@ -225,11 +169,6 @@ namespace DMDashboard
             {
                 CollectorName.PropertyValue = value;
             }
-        }
-
-        public override string ToJson()
-        {
-            return base.ToJson();
         }
     }
 }
