@@ -18,8 +18,11 @@ using System;
 using System.Diagnostics;
 using System.Threading.Tasks;
 using Microsoft.Devices.Management.Message;
+using Windows.Foundation;
+using Windows.Foundation.Diagnostics;
 using Windows.Storage.Streams;
 using Windows.System;
+using Windows.UI.Core;
 
 namespace Microsoft.Devices.Management
 {
@@ -27,6 +30,41 @@ namespace Microsoft.Devices.Management
     // This class send requests (DMrequest) to the System Configurator and receives the responses (DMesponse) from it
     class SystemConfiguratorProxy : ISystemConfiguratorProxy
     {
+        const string CommProxyExe = @"C:\Windows\System32\CommProxy.exe";
+        const string CommProxyArgs = "";
+
+        private void Wait(Func<bool> condition, string message)
+        {
+            while (condition())
+            {
+                Debug.WriteLine(message);
+                CoreWindow coreWindow = CoreWindow.GetForCurrentThread();
+                if (coreWindow != null)
+                {
+                    Debug.WriteLine("Processing events...");
+                    coreWindow.Dispatcher.ProcessEvents(CoreProcessEventsOption.ProcessAllIfPresent);
+                }
+                else
+                {
+                    Debug.WriteLine("Sleeping...");
+                    Task.Delay(200);
+                }
+            }
+        }
+
+        private void ThrowError(IResponse response)
+        {
+            var stringResponse = response as StringResponse;
+            string message = "Error: CommProxy.exe - Operation failed";
+            if (stringResponse != null)
+            {
+                message = "Error Tag(" + stringResponse.Tag.ToString() + ") : " + stringResponse.Status.ToString() + " : " + stringResponse.Response;
+            }
+            Logger.Log(message, LoggingLevel.Critical);
+            Debug.WriteLine(message);
+            throw new Error((int)stringResponse.Status, message);
+        }
+
         public async Task<IResponse> SendCommandAsync(IRequest command)
         {
             var processLauncherOptions = new ProcessLauncherOptions();
@@ -41,7 +79,7 @@ namespace Microsoft.Devices.Management
 
             standardInput.Dispose();
 
-            var processLauncherResult = await ProcessLauncher.RunToCompletionAsync(@"C:\Windows\System32\CommProxy.exe", "", processLauncherOptions);
+            var processLauncherResult = await ProcessLauncher.RunToCompletionAsync(CommProxyExe, CommProxyArgs, processLauncherOptions);
             if (processLauncherResult.ExitCode == 0)
             {
                 using (var outStreamRedirect = standardOutput.GetInputStreamAt(0))
@@ -49,14 +87,7 @@ namespace Microsoft.Devices.Management
                     var response = (await Blob.ReadFromIInputStreamAsync(outStreamRedirect)).MakeIResponse();
                     if (response.Status != ResponseStatus.Success)
                     {
-                        var stringResponse = response as StringResponse;
-                        string message = "Error: CommProxy.exe - Operation failed";
-                        if (stringResponse != null)
-                        {
-                            message = "Error: " + stringResponse.Tag.ToString() + " : " + stringResponse.Response;
-                        }
-                        Debug.WriteLine(message);
-                        throw new Exception(message);
+                        ThrowError(response);
                     }
                     return response;
                 }
@@ -77,43 +108,25 @@ namespace Microsoft.Devices.Management
             processLauncherOptions.StandardError = null;
             processLauncherOptions.StandardInput = standardInput.GetInputStreamAt(0);
 
-            Windows.Foundation.IAsyncAction writeAsyncAction = command.Serialize().WriteToIOutputStreamAsync(standardInput);
-            while (writeAsyncAction.Status == Windows.Foundation.AsyncStatus.Started)
-            {
-                Debug.WriteLine("Waiting to finish writing to output stream...");
-                System.Threading.Tasks.Task.Delay(200);
-            }
+            var writeAsyncAction = command.Serialize().WriteToIOutputStreamAsync(standardInput);
+            Wait(() => writeAsyncAction.Status == AsyncStatus.Started, "Waiting to finish writing to output stream...");
             standardInput.Dispose();
 
-            Windows.Foundation.IAsyncOperation<ProcessLauncherResult> runAsyncAction = ProcessLauncher.RunToCompletionAsync(@"C:\Windows\System32\CommProxy.exe", "", processLauncherOptions);
-            while (runAsyncAction.Status == Windows.Foundation.AsyncStatus.Started)
-            {
-                Debug.WriteLine("Waiting for CommProxy.exe to finish...");
-                System.Threading.Tasks.Task.Delay(200);
-            }
+            var runAsyncAction = ProcessLauncher.RunToCompletionAsync(CommProxyExe, CommProxyArgs, processLauncherOptions);
+            Wait(() => runAsyncAction.Status == AsyncStatus.Started, "Waiting for CommProxy.exe to finish...");
+
             ProcessLauncherResult processLauncherResult = runAsyncAction.GetResults();
             if (processLauncherResult.ExitCode == 0)
             {
                 using (var outStreamRedirect = standardOutput.GetInputStreamAt(0))
                 {
-                    Windows.Foundation.IAsyncOperation<Blob> readAsyncAction = Blob.ReadFromIInputStreamAsync(outStreamRedirect);
-                    while (readAsyncAction.Status == Windows.Foundation.AsyncStatus.Started)
-                    {
-                        Debug.WriteLine("Waiting to finish reading from input stream...");
-                        System.Threading.Tasks.Task.Delay(200);
-                    }
+                    var readAsyncAction = Blob.ReadFromIInputStreamAsync(outStreamRedirect);
+                    Wait(() => readAsyncAction.Status == AsyncStatus.Started, "Waiting to finish reading from input stream...");
 
                     var response = readAsyncAction.GetResults().MakeIResponse();
                     if (response.Status != ResponseStatus.Success)
                     {
-                        var stringResponse = response as StringResponse;
-                        string message = "Error: CommProxy.exe - Operation failed";
-                        if (stringResponse != null)
-                        {
-                            message = "Error: " + stringResponse.Tag.ToString() + " : " + stringResponse.Response;
-                        }
-                        Debug.WriteLine(message);
-                        throw new Exception(message);
+                        ThrowError(response);
                     }
                     return Task.FromResult<IResponse>(response);
                 }

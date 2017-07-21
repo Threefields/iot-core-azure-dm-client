@@ -195,11 +195,16 @@ Call this method to get a list of IoTDM subfolder names. The IoTDM folder is `C:
     "list" : [
         "folder0",
         "folder1",
-        "folder.",
+        ...
         "folderN",
-    ]
+    ],
+    "errorCode": <i>errorCode</i>,
+    "errorMessage": <i>errorMessage</i>
 }
 </pre>
+
+- `"errorCode"`: `windows.enumDMFolders` returns 0 if successful. Otherwise, it returns the error code.
+- `"errorMessage"`: This will be empty if the method call suceeded. Otherwise, it will have the error message if available.
 
 ### windows.enumDMFiles
 
@@ -231,8 +236,16 @@ For example:
 {
     "list": [
         "AzureDM_2017_07_18_11_14_38.etl",
+        ...,
         "AzureDM_2017_07_20_18_14_38.etl"
-    ]
+    ],
+    "errorCode": <i>errorCode</i>,
+    "errorMessage": <i>errorMessage</i>
+}
+</pre>
+
+- `"errorCode"`: `windows.enumDMFiles` returns 0 if successful. Otherwise, it returns the error code.
+- `"errorMessage"`: This will be empty if the method call suceeded. Otherwise, it will have the error message if available.
 }
 </pre>
 
@@ -259,9 +272,13 @@ Notes:
 
 <pre>
 {
-    "response": "succeeded",
+    "errorCode": <i>errorCode</i>,
+    "errorMessage": <i>errorMessage</i>
 }
 </pre>
+
+- `"errorCode"`: `windows.uploadDMFile` returns 0 if successful. Otherwise, it returns the error code.
+- `"errorMessage"`: This will be empty if the method call suceeded. Otherwise, it will have the error message if available.
 
 Notes:
 
@@ -290,12 +307,10 @@ Notes:
 
 <pre>
 {
-    "response": "succeeded",
+    "errorCode": <i>errorCode</i>,
+    "errorMessage": <i>errorMessage</i>
 }
 </pre>
 
-Notes:
-
-- The delete is asynchronous. So, the file should be removed sometime later after the method response is received.
-
-  <i>ToDo: Need a better error reporting mechanism here.</i>
+- `"errorCode"`: `windows.enumDMFolders` returns 0 if successful. Otherwise, it returns the error code.
+- `"errorMessage"`: This will be empty if the method call suceeded. Otherwise, it will have the error message if available.

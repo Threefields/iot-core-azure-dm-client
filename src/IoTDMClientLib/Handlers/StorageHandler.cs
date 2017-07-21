@@ -13,20 +13,34 @@ WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN 
 THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
+using DMDataContract;
 using Microsoft.Devices.Management.Message;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Text;
 using System.Threading.Tasks;
+using Windows.Foundation.Diagnostics;
 using Windows.Storage;
 
 namespace Microsoft.Devices.Management
 {
     class StorageHandler : IClientDirectMethodHandler
     {
+        const int SuccessCode = 0;
+        const string JsonNamesList = "list";
+        const string JsonErrorCode = "errorCode";
+        const string JsonErrorMessage = "errorMessage";
+        const string JsonFolder = "folder";
+        const string JsonFile = "file";
+        const string JsonConnectionString = "connectionString";
+        const string JsonContainer = "container";
+
+        const string MethodEnumDMFolders = "windows.enumDMFolders";
+        const string MethodEnumDMFiles = "windows.enumDMFiles";
+        const string MethodDeleteDMFile = "windows.deleteDMFile";
+        const string MethodUploadDMFile = "windows.uploadDMFile";
 
         public StorageHandler(IClientHandlerCallBack callback, ISystemConfiguratorProxy systemConfiguratorProxy)
         {
@@ -39,141 +53,184 @@ namespace Microsoft.Devices.Management
         {
             return new Dictionary<string, Func<string, Task<string>>>()
                 {
-                    { "windows.enumDMFolders" , EnumDMFolders },
-                    { "windows.enumDMFiles" , EnumDMFiles },
-                    { "windows.deleteDMFile" , DeleteDMFile },
-                    { "windows.uploadDMFile" , UploadDMFile },
+                    { MethodEnumDMFolders , EnumDMFolders },
+                    { MethodEnumDMFiles , EnumDMFiles },
+                    { MethodDeleteDMFile , DeleteDMFile },
+                    { MethodUploadDMFile , UploadDMFile },
                 };
         }
 
-        private Task<string> EnumDMFolders(string jsonParam)
+        private string GetParameter(JObject jsonParamsObject, string name, int errorCode, string errorMessage)
         {
-            Debug.WriteLine("EnumDMFolders");
-            var request = new Message.GetDMFoldersRequest();
-            Task<IResponse> response = _systemConfiguratorProxy.SendCommand(request);
-            StringListResponse listResponse = response.Result as StringListResponse;
-            StringBuilder arrayString = new StringBuilder();
-
-            foreach (string s in listResponse.List)
+            string value = "";
+            if (!Utils.TryGetString(jsonParamsObject, name, out value))
             {
-                Debug.WriteLine("Found: " + s);
-                if (arrayString.Length > 0)
+                throw new Error(errorCode, errorMessage);
+            }
+            Logger.Log(name + " :" + value, LoggingLevel.Verbose);
+            return value;
+        }
+
+        private string BuildListJsonString(StringListResponse responseList)
+        {
+            // JsonConvert.SerializeObject does not work with responseList.List.
+            StringBuilder jsonArrayString = new StringBuilder();
+            foreach (string s in responseList.List)
+            {
+                Logger.Log("Found: " + s, LoggingLevel.Verbose);
+                if (jsonArrayString.Length > 0)
                 {
-                    arrayString.Append(",\n");
+                    jsonArrayString.Append(",\n");
                 }
-                string escaped = s.Replace("\\", "\\\\");
-                arrayString.Append("\"" + escaped + "\"");
+                jsonArrayString.Append("\"" + s + "\"");
             }
 
             StringBuilder sb = new StringBuilder();
-            sb.Append("{\n");
-            sb.Append("    \"list\": [\n");
-            if (arrayString.Length > 0)
+            sb.Append("    \"" + JsonNamesList + "\": [\n");
+            if (jsonArrayString.Length > 0)
             {
-                sb.Append(arrayString.ToString());
+                sb.Append(jsonArrayString.ToString());
                 sb.Append("\n");
             }
             sb.Append("    ]\n");
-            sb.Append("}\n");
 
-            Debug.WriteLine("DM Folders:" + sb.ToString());
-            return Task.FromResult(sb.ToString());
+            Logger.Log("Json List: " + sb.ToString(), LoggingLevel.Verbose);
+
+            return sb.ToString();
         }
 
-        private Task<string> EnumDMFiles(string jsonParam)
+        private Task<string> BuildMethodJsonResponse(string output, int errorCode, string errorMessage)
         {
-            Debug.WriteLine("EnumDMFiles");
-            JObject o = (JObject)JsonConvert.DeserializeObject(jsonParam);
-            string folderName = (string)o["folder"];
-            Debug.WriteLine("folder name = " + folderName);
-            var request = new Message.GetDMFilesRequest();
-            request.DMFolderName = folderName;
-            Task<IResponse> response = _systemConfiguratorProxy.SendCommand(request);
-            StringListResponse listResponse = response.Result as StringListResponse;
-            StringBuilder arrayString = new StringBuilder();
-
-            foreach (string s in listResponse.List)
-            {
-                Debug.WriteLine("Found: " + s);
-                if (arrayString.Length > 0)
-                {
-                    arrayString.Append(",\n");
-                }
-                string escaped = s.Replace("\\", "\\\\");
-                arrayString.Append("\"" + escaped + "\"");
-            }
-
             StringBuilder sb = new StringBuilder();
             sb.Append("{\n");
-            sb.Append("    \"list\": [\n");
-            if (arrayString.Length > 0)
+            if (output.Length > 0)
             {
-                sb.Append(arrayString.ToString());
-                sb.Append("\n");
+                sb.Append(output);
+                sb.Append(",");
             }
-            sb.Append("    ]\n");
+            sb.Append("\"" + JsonErrorCode + "\" : "+ errorCode + ",");
+            sb.Append("\"" + JsonErrorMessage + "\" : \"" + errorMessage + "\",");
             sb.Append("}\n");
 
-            Debug.WriteLine("DM Folders:" + sb.ToString());
-            return Task.FromResult(sb.ToString());
+            string methodResponse = sb.ToString();
+
+            Logger.Log("Method Response: " + methodResponse, LoggingLevel.Verbose);
+            return Task.FromResult(methodResponse);
         }
 
-        private Task<string> DeleteDMFile(string jsonParam)
+        private Task<string> EnumDMFolders(string jsonParamString)
         {
-            Debug.WriteLine("DeleteDMFile");
-            JObject o = (JObject)JsonConvert.DeserializeObject(jsonParam);
+            Logger.Log("Enumerating DM folders...", LoggingLevel.Information);
 
-            string folderName = (string)o["folder"];
-            string fileName = (string)o["file"];
-
-            Debug.WriteLine("folder name = " + folderName);
-            Debug.WriteLine("file name = " + fileName);
-
-            var request = new Message.DeleteDMFileRequest();
-            request.DMFolderName = folderName;
-            request.DMFileName = fileName;
-            Task<IResponse> response = _systemConfiguratorProxy.SendCommand(request);
-
-            StringResponse listResponse = response.Result as StringResponse;
-            if (listResponse.Status == ResponseStatus.Failure)
+            try
             {
-                return Task.FromResult(JsonConvert.SerializeObject(new { response = "failed" }));
+                var request = new GetDMFoldersRequest();
+                Task<IResponse> response = _systemConfiguratorProxy.SendCommand(request);
+                string responseListString = BuildListJsonString(response.Result as StringListResponse);
+                return BuildMethodJsonResponse(responseListString, 0, "");
             }
-
-            return Task.FromResult(JsonConvert.SerializeObject(new { response = "succeeded" }));
+            catch(Exception err)
+            {
+                return BuildMethodJsonResponse("", err.HResult, err.Message);
+            }
         }
 
-        private async Task UploadDMFileAsync(string jsonParam)
+        private Task<string> EnumDMFiles(string jsonParamString)
         {
-            Debug.WriteLine("UploadDMFile");
-            JObject o = (JObject)JsonConvert.DeserializeObject(jsonParam);
+            Logger.Log("Enumerating DM files...", LoggingLevel.Information);
 
-            // source
-            string folderName = (string)o["folder"];
-            string fileName = (string)o["file"];
-            // azure storage
-            string connectionString = (string)o["connectionString"];
-            string containerName = (string)o["container"];
-
-            var info = new Message.AzureFileTransferInfo();
-            info.ConnectionString = connectionString;
-            info.ContainerName = containerName;
-            info.BlobName = fileName;
-            info.Upload = true;
-            info.LocalPath = Utils.IoTDMFolder + "\\" + folderName + "\\" + fileName;
-            info.AppLocalDataPath = ApplicationData.Current.TemporaryFolder.Path + "\\" + fileName;
-
-            AzureFileTransferRequest request = new AzureFileTransferRequest(info);
-            var response = _systemConfiguratorProxy.SendCommand(request);
-            if (response.Result.Status == ResponseStatus.Success)
+            try
             {
-                Debug.WriteLine("Copy Succeeded!");
-                var appLocalDataFile = await ApplicationData.Current.TemporaryFolder.GetFileAsync(fileName);
-                Debug.WriteLine("Handle retrieved!");
-                await IoTDMClient.AzureBlobFileTransfer.UploadFile(info, appLocalDataFile);
-                Debug.WriteLine("File uploaded!");
-                await appLocalDataFile.DeleteAsync();
-                Debug.WriteLine("Local temporary file deleted!");
+                object paramsObject = JsonConvert.DeserializeObject(jsonParamString);
+                if (paramsObject == null || !(paramsObject is JObject))
+                {
+                    throw new Error(ErrorCodes.INVALID_PARAMS, "Invalid enumDMFiles parameters.");
+                }
+
+                JObject jsonParamsObject = (JObject)paramsObject;
+
+                var request = new GetDMFilesRequest();
+                request.DMFolderName = GetParameter(jsonParamsObject, JsonFolder, ErrorCodes.INVALID_FOLDER_PARAM, "Invalid or missing folder parameter.");
+                Task<IResponse> response = _systemConfiguratorProxy.SendCommand(request);
+                string responseListString = BuildListJsonString(response.Result as StringListResponse);
+                return BuildMethodJsonResponse(responseListString, 0, "");
+            }
+            catch (Exception err)
+            {
+                return BuildMethodJsonResponse("", err.HResult, err.Message);
+            }
+        }
+
+        private Task<string> DeleteDMFile(string jsonParamString)
+        {
+            Logger.Log("Deleting DM file...", LoggingLevel.Information);
+
+            try
+            {
+                object paramsObject = JsonConvert.DeserializeObject(jsonParamString);
+                if (paramsObject == null || !(paramsObject is JObject))
+                {
+                    throw new Error(ErrorCodes.INVALID_PARAMS, "Invalid enumDMFiles parameters.");
+                }
+
+                JObject jsonParamsObject = (JObject)paramsObject;
+
+                var request = new Message.DeleteDMFileRequest();
+                request.DMFolderName = GetParameter(jsonParamsObject, JsonFolder, ErrorCodes.INVALID_FOLDER_PARAM, "Invalid or missing folder parameter.");
+                request.DMFileName = GetParameter(jsonParamsObject, JsonFile, ErrorCodes.INVALID_FILE_PARAM, "Invalid or missing folder parameter.");
+                Task<IResponse> response = _systemConfiguratorProxy.SendCommand(request);
+
+                StringResponse responseList = response.Result as StringResponse;
+
+                return BuildMethodJsonResponse("", (int)responseList.Status, responseList.Response);
+            }
+            catch (Exception err)
+            {
+                return BuildMethodJsonResponse("", err.HResult, err.Message);
+            }
+        }
+
+        private async Task UploadDMFileAsync(string jsonParamString)
+        {
+            Logger.Log("Uploading DM file...", LoggingLevel.Information);
+
+            try
+            {
+                object paramsObject = JsonConvert.DeserializeObject(jsonParamString);
+                if (paramsObject == null || !(paramsObject is JObject))
+                {
+                    throw new Error(ErrorCodes.INVALID_PARAMS, "Invalid enumDMFiles parameters.");
+                }
+
+                JObject jsonParamsObject = (JObject)paramsObject;
+
+                string folderName = GetParameter(jsonParamsObject, JsonFolder, ErrorCodes.INVALID_FOLDER_PARAM, "Invalid or missing folder parameter.");
+                string fileName = GetParameter(jsonParamsObject, JsonFile, ErrorCodes.INVALID_FILE_PARAM, "Invalid or missing folder parameter.");
+
+                var info = new AzureFileTransferInfo();
+                info.ConnectionString = GetParameter(jsonParamsObject, JsonConnectionString, ErrorCodes.INVALID_CONNECTION_STRING_PARAM, "Invalid or missing connection string parameter.");
+                info.ContainerName = GetParameter(jsonParamsObject, JsonContainer, ErrorCodes.INVALID_CONTAINER_PARAM, "Invalid or missing container parameter.");
+                info.BlobName = fileName;
+                info.Upload = true;
+                info.LocalPath = Constants.IoTDMFolder + "\\" + folderName + "\\" + fileName;
+                info.AppLocalDataPath = ApplicationData.Current.TemporaryFolder.Path + "\\" + fileName;
+
+                AzureFileTransferRequest request = new AzureFileTransferRequest(info);
+                var response = _systemConfiguratorProxy.SendCommand(request);
+                if (response.Result.Status == ResponseStatus.Success)
+                {
+                    Logger.Log("File copied to UWP application temporary folder...", LoggingLevel.Information);
+                    var appLocalDataFile = await ApplicationData.Current.TemporaryFolder.GetFileAsync(fileName);
+                    Logger.Log("Uploading file...", LoggingLevel.Information);
+                    await IoTDMClient.AzureBlobFileTransfer.UploadFile(info, appLocalDataFile);
+                    Logger.Log("Upload done. Deleting local temporary file...", LoggingLevel.Information);
+                    await appLocalDataFile.DeleteAsync();
+                    Logger.Log("Temporary file deleted..", LoggingLevel.Information);
+                }
+            }
+            catch (Exception err)
+            {
+                BuildMethodJsonResponse("", err.HResult, err.Message);
             }
         }
 
@@ -181,7 +238,7 @@ namespace Microsoft.Devices.Management
         {
             UploadDMFileAsync(jsonParam);
 
-            return Task.FromResult(JsonConvert.SerializeObject(new { response = "succeeded" }));
+            return BuildMethodJsonResponse("" /*payload*/, SuccessCode, "" /*error message*/);
         }
 
         private ISystemConfiguratorProxy _systemConfiguratorProxy;

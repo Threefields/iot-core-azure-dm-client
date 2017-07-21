@@ -209,7 +209,6 @@
     <Compile Include="StorageManagement\DMFileRetrieval.xaml.cs">
       <DependentUpon>DMFileRetrieval.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Utils.cs" />
     <Compile Include="Wifi\WifiDetails.xaml.cs">
       <DependentUpon>WifiDetails.xaml</DependentUpon>
     </Compile>

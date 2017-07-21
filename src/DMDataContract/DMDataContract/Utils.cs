@@ -17,7 +17,7 @@ using Newtonsoft.Json.Linq;
 using System.Collections.Generic;
 using System.Diagnostics;
 
-namespace DMDashboard
+namespace DMDataContract
 {
     public class Utils
     {
@@ -29,6 +29,27 @@ namespace DMDashboard
                 return jValue;
             }
             return null;
+        }
+
+        public static bool TryGetString(JObject jObj, string propertyName, out string propertyValue)
+        {
+            bool retValue = false;
+            JToken jValue;
+            propertyValue = "";
+
+            if (jObj.TryGetValue(propertyName, out jValue))
+            {
+                if (jValue.Type == JTokenType.String)
+                {
+                    propertyValue = (string)jValue;
+                    retValue = true;
+                }
+                else
+                {
+                    Debug.WriteLine($"Property {propertyName} found but its type is not string!");
+                }
+            }
+            return retValue;
         }
 
         public static string GetString(JObject jObj, string propertyName, string defaultValue)
@@ -65,7 +86,7 @@ namespace DMDashboard
             return defaultValue;
         }
 
-        public static string [] GetStringArray(JObject jObj, string propertyName)
+        public static string[] GetStringArray(JObject jObj, string propertyName)
         {
             List<string> list = new List<string>();
 
