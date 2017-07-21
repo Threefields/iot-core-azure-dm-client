@@ -18,22 +18,40 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Microsoft.Devices.Management.Message;
 using System;
-using System.Collections.Generic;
-using System.Diagnostics;
 using System.Threading.Tasks;
 using Windows.Data.Json;
+using Windows.Foundation.Diagnostics;
 
 namespace Microsoft.Devices.Management
 {
     class EventTracingHandler : IClientPropertyHandler
     {
         const string JsonSectionName = "eventTracingCollectors";
+        const string JsonReportProperties = "reportProperties";
+        const string JsonApplyProperties = "applyProperties";
+        const string JsonYesString = "yes";
+        const string JsonNoString = "no";
+        const string JsonLogFileFolder = "logFileFolder";
+        const string JsonLogFileSizeLimitMB = "logFileSizeLimitMB";
+        const string JsonTraceLogFileMode = "traceLogFileMode";
+        const string JsonStarted = "started";
+        const string JsonType = "type";
+        const string JsonProvider = "provider";
+        const string JsonTraceLevel = "traceLevel";
+        const string JsonKeywords = "keyWords";
+        const string JsonEnabled = "enabled";
+        const string JsonReportLevelDetails = "detailed";
+        const string JsonReportLevelMinimal = "none";
+        const string JsonReportLevelNone = "none";
+        const string JsonRefreshing = "refreshing";
+        const string JsonQuery = "?";
+        const string JsonDefaultTraceLevel = "critical";
 
         public EventTracingHandler(IClientHandlerCallBack callback, ISystemConfiguratorProxy systemConfiguratorProxy, JObject desiredCache)
         {
-            this._systemConfiguratorProxy = systemConfiguratorProxy;
-            this._callback = callback;
-            this._desiredCache = desiredCache;
+            _systemConfiguratorProxy = systemConfiguratorProxy;
+            _callback = callback;
+            _desiredCache = desiredCache;
         }
 
         // IClientPropertyHandler
@@ -41,102 +59,121 @@ namespace Microsoft.Devices.Management
         {
             get
             {
-                return JsonSectionName; // todo: constant in data contract?
+                return JsonSectionName;
             }
         }
 
-        private void PopulateCollector(CollectorDesiredConfiguration collector, JObject properties)
+        private ProviderConfiguration TryReadProviderFromJson(JProperty cspProperty)
         {
-            // Read device twin control properties...
-            collector.ReportToDeviceTwin = (string)properties.GetValue("reportProperties");
+            Logger.Log("Reading provider desired configuration...", LoggingLevel.Information);
 
-            JToken jApplyProperties = properties.GetValue("applyProperties");
-            if (jApplyProperties is JObject)
+            Guid providerGuid;
+            if (!Guid.TryParse(cspProperty.Name, out providerGuid))
             {
-                collector.ApplyFromDeviceTwin = "yes";
-                JObject jCSPProperties = (JObject)jApplyProperties;
-                collector.CSPConfiguration = new CollectorCSPConfiguration();
-                foreach (JToken cspToken in jCSPProperties.Children())
+                return null;
+            }
+
+            if (!(cspProperty.Value is JObject))
+            {
+                return null;
+            }
+
+            JObject jCSPProvider = (JObject)cspProperty.Value;
+            if ((string)jCSPProvider.GetValue(JsonType) != JsonProvider)
+            {
+                return null;
+            }
+
+            Logger.Log("Provider name: " + cspProperty.Name, LoggingLevel.Information);
+
+            ProviderConfiguration provider = new ProviderConfiguration();
+            provider.Guid = cspProperty.Name;
+            provider.TraceLevel = Utils.GetString(jCSPProvider, JsonTraceLevel, JsonDefaultTraceLevel);
+            provider.Keywords = Utils.GetString(jCSPProvider, JsonKeywords, "");
+            provider.Enabled = Utils.GetString(jCSPProvider, JsonEnabled, JsonNoString) == JsonYesString;
+            return provider;
+        }
+
+        private CollectorCSPConfiguration CSPConfigurationFromJson(JObject jCSPProperties)
+        {
+            Logger.Log("Reading collector CSP desired configuration...", LoggingLevel.Information);
+
+            CollectorCSPConfiguration cspConfiguration = new CollectorCSPConfiguration();
+            foreach (JToken cspToken in jCSPProperties.Children())
+            {
+                if (!(cspToken is JProperty))
                 {
-                    if (!(cspToken is JProperty))
-                    {
-                        continue;
-                    }
+                    continue;
+                }
 
-                    JProperty cspProperty = (JProperty)cspToken;
-                    if (cspProperty.Name == "logFileFolder")
+                JProperty cspProperty = (JProperty)cspToken;
+                if (cspProperty.Name == JsonLogFileFolder)
+                {
+                    cspConfiguration.LogFileFolder = (string)cspProperty.Value;
+                }
+                else if (cspProperty.Name == JsonLogFileSizeLimitMB)
+                {
+                    cspConfiguration.LogFileSizeLimitMB = (int)cspProperty.Value;
+                }
+                else if (cspProperty.Name == JsonTraceLogFileMode)
+                {
+                    cspConfiguration.TraceLogFileMode = (string)cspProperty.Value;
+                }
+                else if (cspProperty.Name == JsonStarted)
+                {
+                    cspConfiguration.Started = (string)cspProperty.Value;
+                }
+                else
+                {
+                    ProviderConfiguration provider = TryReadProviderFromJson(cspProperty);
+                    if (provider != null)
                     {
-                        collector.CSPConfiguration.LogFileFolder = (string)cspProperty.Value;
+                        cspConfiguration.Providers.Add(provider);
                     }
-                    else if (cspProperty.Name == "logFileSizeLimitMB")
-                    {
-                        collector.CSPConfiguration.LogFileSizeLimitMB = (int)cspProperty.Value;
-                    }
-                    else if (cspProperty.Name == "traceLogFileMode")
-                    {
-                        collector.CSPConfiguration.TraceLogFileMode = (string)cspProperty.Value;
-                    }
-                    else if (cspProperty.Name == "started")
-                    {
-                        collector.CSPConfiguration.Started = (string)cspProperty.Value;
-                    }
-                    else
-                    {
-                        // must be a provider's guid...
-                        Guid providerGuid;
-                        if (!Guid.TryParse(cspProperty.Name, out providerGuid))
-                        {
-                            throw new Error(-1, "Provider's identity must be a guid!");
-                        }
-
-                        if (!(cspProperty.Value is JObject))
-                        {
-                            throw new Error(-2, "Provider's definition must be a json object!");
-                        }
-
-                        ProviderConfiguration provider = new ProviderConfiguration();
-                        provider.Guid = cspProperty.Name;
-
-                        JObject jCSPProvider = (JObject)cspProperty.Value;
-                        if ((string)jCSPProvider.GetValue("type") != "provider")
-                        {
-                            throw new Error(-3, "Expected provider type!");
-                        }
-
-                        provider.TraceLevel = (string)jCSPProvider.GetValue("traceLevel");
-                        provider.Keywords = (string)jCSPProvider.GetValue("keyWords");
-                        provider.Enabled = (string)jCSPProvider.GetValue("enabled") == "yes";
-
-                        collector.CSPConfiguration.Providers.Add(provider);
-                    }
+                    // We don't throw errors here because we only read the node
+                    // we know about. Extra nodes are allowed.
                 }
             }
-            else
+            return cspConfiguration;
+        }
+
+        private CollectorDesiredConfiguration CollectorFromJson(string name, JObject properties)
+        {
+            Logger.Log("Reading collector desired configuration (" + name + ")...", LoggingLevel.Information);
+
+            CollectorDesiredConfiguration collector = new CollectorDesiredConfiguration();
+            collector.Name = name;
+
+            // Set device twin control properties...
+            collector.ReportToDeviceTwin = Utils.GetString(properties, JsonReportProperties, JsonNoString);
+
+            JToken jApplyProperties = Utils.GetJToken(properties, JsonApplyProperties);
+            if (!(jApplyProperties is JObject))
             {
-                collector.ApplyFromDeviceTwin = "no";
+                collector.ApplyFromDeviceTwin = JsonNoString;
+                return collector;
             }
+            collector.ApplyFromDeviceTwin = JsonYesString;
+
+            // Set csp properties...
+            collector.CSPConfiguration = CSPConfigurationFromJson((JObject)jApplyProperties);
+            return collector;
         }
 
         private async Task NullifyReported()
         {
-            Debug.WriteLine("NullifyReported\n");
-            await this._callback.ReportPropertiesAsync(JsonSectionName, new JValue("refreshing"));
+            Logger.Log("Nullify " + PropertySectionName + "...", LoggingLevel.Information);
+            await _callback.ReportPropertiesAsync(JsonSectionName, new JValue(JsonRefreshing));
         }
 
-        private async Task OnDesiredPropertyChangeAsync(JToken desiredValue)
+        private SetEventTracingConfigurationRequest SetRequestFromJson(JObject eventTracingCollectorsNode, out string generalReportLevel)
         {
-            if (!(desiredValue is JObject))
-            {
-                return;
-            }
-            string generalReportLevel = "none";
+            Logger.Log("Building native request from desired json...", LoggingLevel.Information);
 
-            // A list of collectors
-            JObject eventTracingCollectorsNode = (JObject)desiredValue;
+            generalReportLevel = JsonDefaultTraceLevel;
 
             SetEventTracingConfigurationRequest request = new SetEventTracingConfigurationRequest();
 
-            // Convert jason to request...
             foreach (JToken jToken in eventTracingCollectorsNode.Children())
             {
                 if (!(jToken is JProperty))
@@ -145,68 +182,100 @@ namespace Microsoft.Devices.Management
                 }
                 JProperty collectorNode = (JProperty)jToken;
 
-                if (collectorNode.Name == "?" &&
+                // Check if it is query ("?")...
+                if (collectorNode.Name == JsonQuery &&
                     collectorNode.Value is JValue && collectorNode.Value.Type == JTokenType.String)
                 {
                     generalReportLevel = collectorNode.Value.ToString();
                 }
                 else if (collectorNode.Value is JObject)
                 {
-                    CollectorDesiredConfiguration collector = new CollectorDesiredConfiguration();
-                    collector.Name = collectorNode.Name;
+                    CollectorDesiredConfiguration collector = CollectorFromJson(collectorNode.Name, (JObject)collectorNode.Value);
                     request.Collectors.Add(collector);
-                    PopulateCollector(collector, (JObject)collectorNode.Value);
                 }
             }
+
+            return request;
+        }
+
+        private async Task<string> SetEventTracingConfiguration(JObject desiredValue)
+        {
+            string generalReportLevel = JsonDefaultTraceLevel;
+            SetEventTracingConfigurationRequest request = SetRequestFromJson((JObject)desiredValue, out generalReportLevel);
 
             // Send the request...
             if (request.Collectors.Count != 0)
             {
-                var setResponse = await this._systemConfiguratorProxy.SendCommandAsync(request) as Message.StringResponse;
+                Logger.Log("Sending request...", LoggingLevel.Information);
+
+                var setResponse = await _systemConfiguratorProxy.SendCommandAsync(request) as Message.StringResponse;
                 if (setResponse.Status != ResponseStatus.Success)
                 {
                     throw new Error((int)setResponse.Status, setResponse.Response);
                 }
             }
+            return generalReportLevel;
+        }
 
-            // Get all collectors from the system...
-            Message.GetEventTracingConfigurationRequest getRequest = new Message.GetEventTracingConfigurationRequest();
-            var getResponse = await this._systemConfiguratorProxy.SendCommandAsync(getRequest);
-            if (getResponse.Status != ResponseStatus.Success)
-            {
-                var stringResponse = getResponse as Message.StringResponse;
-                throw new Error((int)stringResponse.Status, stringResponse.Response);
-            }
+        private string ReportedFromResponse(GetEventTracingConfigurationResponse response, string generalReportLevel)
+        {
+            Logger.Log("Building diagnostic logs reported properties...", LoggingLevel.Information);
 
-            // Build the reported list...
             JsonObject jEventTracingObject = new JsonObject();
-            var eventTracingResponse = getResponse as Message.GetEventTracingConfigurationResponse;
-            foreach (CollectorReportedConfiguration collector in eventTracingResponse.Collectors)
+            foreach (CollectorReportedConfiguration collector in response.Collectors)
             {
                 if (collector.ReportToDeviceTwin == DMJSonConstants.YesString ||
-                    generalReportLevel == "detailed")
+                    generalReportLevel == JsonReportLevelDetails)
                 {
                     JsonObject jCollectorObject = new JsonObject();
                     collector.CSPConfiguration.ToJsonObject(jCollectorObject);
                     jEventTracingObject[collector.Name] = jCollectorObject;
                 }
-                else if (generalReportLevel == "minimal")
+                else if (generalReportLevel == JsonReportLevelMinimal)
                 {
                     jEventTracingObject[collector.Name] = JsonValue.CreateStringValue("");
                 }
             }
-            string responseJsonString = jEventTracingObject.Stringify();
-            Debug.WriteLine(responseJsonString);
 
-            // Report...
+            return jEventTracingObject.Stringify();
+        }
+
+        private async Task<string> GetEventTracingConfiguration(string generalReportLevel)
+        {
+            Logger.Log("Retrieving diagnostic logs configurations...", LoggingLevel.Information);
+
+            GetEventTracingConfigurationRequest getRequest = new GetEventTracingConfigurationRequest();
+            var getResponse = await _systemConfiguratorProxy.SendCommandAsync(getRequest);
+            if (getResponse.Status != ResponseStatus.Success)
+            {
+                var stringResponse = getResponse as StringResponse;
+                throw new Error((int)stringResponse.Status, stringResponse.Response);
+            }
+
+            return ReportedFromResponse(getResponse as GetEventTracingConfigurationResponse, generalReportLevel);
+        }
+
+        private async Task OnDesiredPropertyChangeAsync(JToken desiredValue)
+        {
+            Logger.Log("Processing desired properties for section: " + PropertySectionName + "...", LoggingLevel.Information);
+
+            if (!(desiredValue is JObject))
+            {
+                return;
+            }
+
+            _generalReportLevel = await SetEventTracingConfiguration((JObject)desiredValue);
+
+            string responseJsonString = await GetEventTracingConfiguration(_generalReportLevel);
+
             await NullifyReported();
 
             await _callback.ReportPropertiesAsync(JsonSectionName, JObject.Parse(responseJsonString));
         }
 
-
         private void UpdateCache(JToken desiredValue)
         {
+            // Removal (with or without caching/merging) requires explicitly specified state.
             JToken cachedToken = _desiredCache.SelectToken(JsonSectionName);
             if (cachedToken != null)
             {
@@ -235,12 +304,14 @@ namespace Microsoft.Devices.Management
         // IClientPropertyHandler
         public async Task<JObject> GetReportedPropertyAsync()
         {
-            // ToDo: we need to use the cached status to know what to report back.
-            return (JObject)JsonConvert.DeserializeObject("{ \"state\" : \"not implemented\" }");
+            string responseJsonString = await GetEventTracingConfiguration(_generalReportLevel);
+
+            return (JObject)JsonConvert.DeserializeObject(responseJsonString);
         }
 
         private ISystemConfiguratorProxy _systemConfiguratorProxy;
         private IClientHandlerCallBack _callback;
         private JObject _desiredCache;
+        private string _generalReportLevel;
     }
 }
