@@ -107,6 +107,9 @@
     <ClInclude Include="Models\DeviceDMStorage.h">
       <Filter>Models</Filter>
     </ClInclude>
+    <ClInclude Include="Models\StringListResponse.h">
+      <Filter>Models</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="Models\ModelsInfo.dat" />

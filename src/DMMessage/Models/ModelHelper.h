@@ -127,9 +127,9 @@ public:
     {
         JsonObject^ jReportProperties = nullptr;
 
-        if (configObjectString->Equals(JsonNo))
+        if (configObjectString->Equals(JsonYes))
         {
-            configObject->ReportToDeviceTwin = JsonNo;
+            configObject->ReportToDeviceTwin = JsonYes;
         }
         else
         {
@@ -153,24 +153,20 @@ public:
         return jReportProperties;
     }
 
-    static JsonObject^ ToJson(BaseClass^ configObject, SerializePropertiesFxn SerializeProperties)
-    {
-        // Note that configObject->ReportToDeviceTwin should have no effect here
-        // because we want to transfer the contents of the inner object regardless.
-        // The DMLibrary will then decide whether to push to the device twin or not
-        // based on configObject->ReportToDeviceTwin and other flags it owns.
-
-        JsonObject^ jReportProperties = ref new JsonObject();
-        SerializeProperties(jReportProperties, configObject);
-
-        JsonObject^ jConfigObject = ref new JsonObject();
-        jConfigObject->Insert(JsonReportProperties, jReportProperties);
-        return jConfigObject;
-    }
-
     static Blob^ Serialize(BaseClass^ configObject, uint32_t tag, SerializePropertiesFxn SerializeProperties)
     {
-        JsonObject^ jConfigObject = ToJson(configObject, SerializeProperties);
+        JsonObject^ jConfigObject = ref new JsonObject();
+        if (configObject->ReportToDeviceTwin == JsonYes)
+        {
+            JsonObject^ jReportProperties = ref new JsonObject();
+            SerializeProperties(jReportProperties, configObject);
+            jConfigObject->Insert(JsonReportProperties, jReportProperties);
+        }
+        else
+        {
+            jConfigObject->Insert(JsonReportProperties, JsonValue::CreateStringValue(JsonNo));
+        }
+
         return SerializationHelper::CreateBlobFromJson(tag, jConfigObject);
     }
 

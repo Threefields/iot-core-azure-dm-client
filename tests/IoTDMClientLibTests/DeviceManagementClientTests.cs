@@ -110,7 +110,7 @@ namespace IoTDMClientLibTests
 
         public Task<IResponse> SendCommand(IRequest request)
         {
-            return null;
+            throw new Exception("Unsupported command");
         }
 
         public IRequest ReceivedRequest => this.request;

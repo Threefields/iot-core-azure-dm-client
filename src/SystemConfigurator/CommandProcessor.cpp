@@ -1133,7 +1133,6 @@ IResponse^ HandleGetEventTracingConfiguration(IRequest^ request)
         std::function<void(std::vector<std::wstring>&, std::wstring&)> valueHandler =
             [response, &collectors](vector<wstring>& uriTokens, wstring& value)
         {
-            TRACE("1");
             CollectorReportedConfiguration^ currentCollector;
 
             if (uriTokens.size() < 7)
@@ -1156,18 +1155,6 @@ IResponse^ HandleGetEventTracingConfiguration(IRequest^ request)
                 currentCollector->Name = ref new String(cspCollectorName.c_str());
 
                 wstring reportToDeviceTwin = ReadRegistryValue(registryPath, IoTDMRegistryReportToDeviceTwin, L"no");
-                TRACE(L"\n");
-                TRACE(L"\n");
-                TRACE(IoTDMRegistryReportToDeviceTwin);
-                TRACE(L"\n");
-                TRACE(L"\n");
-                TRACE(registryPath.c_str());
-                TRACE(L"\n");
-                TRACE(L"\n");
-                TRACE(reportToDeviceTwin.c_str());
-                TRACE(L"\n");
-                TRACE(L"\n");
-
                 currentCollector->ReportToDeviceTwin = ref new String(reportToDeviceTwin.c_str());
                 currentCollector->CSPConfiguration->LogFileFolder = ref new String(ReadRegistryValue(registryPath, IoTDMRegistryEventTracingLogFileFolder, cspCollectorName).c_str());
 
@@ -1180,12 +1167,8 @@ IResponse^ HandleGetEventTracingConfiguration(IRequest^ request)
                 currentCollector = it->second;
             }
 
-            TRACE("2");
-
             if (uriTokens.size() >= 8)
             {
-                TRACE("3");
-
                 // 0/__1___/_2__/______3______/__4___/____5_____/___6___/____7______/
                 // ./Vendor/MSFT/DiagnosticLog/EtwLog/Collectors/AzureDM/TraceStatus
 
@@ -1205,32 +1188,25 @@ IResponse^ HandleGetEventTracingConfiguration(IRequest^ request)
 
             if (uriTokens.size() >= 9)
             {
-                TRACE("4");
-
                 // 0/__1___/_2__/______3______/__4___/____5_____/___6___/____7____/_8__
                 // ./Vendor/MSFT/DiagnosticLog/EtwLog/Collectors/AzureDM/Providers/guid
 
                 if (currentCollector->CSPConfiguration->Providers == nullptr)
                 {
-                    TRACE("5");
                     currentCollector->CSPConfiguration->Providers = ref new Vector<ProviderConfiguration^>();
                 }
 
                 ProviderConfiguration^ currentProvider;
                 for (auto provider : currentCollector->CSPConfiguration->Providers)
                 {
-                    TRACE("6");
                     if (0 == _wcsicmp(provider->Guid->Data(), uriTokens[8].c_str()))
                     {
-                        TRACE("7");
                         currentProvider = provider;
                     }
                 }
 
                 if (currentProvider == nullptr)
                 {
-                    TRACE("8");
-
                     ProviderConfiguration^ provider = ref new ProviderConfiguration();
                     provider->Guid = ref new String(uriTokens[8].c_str());
                     currentCollector->CSPConfiguration->Providers->Append(provider);
@@ -1240,8 +1216,6 @@ IResponse^ HandleGetEventTracingConfiguration(IRequest^ request)
 
                 if (uriTokens.size() >= 10)
                 {
-                    TRACE("9");
-
                     // 0/__1___/_2__/______3______/__4___/____5_____/___6___/___7_____/_8__/____9____
                     // ./Vendor/MSFT/DiagnosticLog/EtwLog/Collectors/AzureDM/Providers/guid/TraceLevel
 
@@ -1494,7 +1468,7 @@ IResponse^ HandleGetDMFolders(IRequest^ request)
         wstring path = SC_CLEANUP_FOLDER;
         TRACEP(L"Scanning: ", path.c_str());
 
-        GetStringListResponse^ response = ref new GetStringListResponse(ResponseStatus::Success);
+        StringListResponse^ response = ref new StringListResponse(ResponseStatus::Success);
 
         for (const directory_entry& dirEntry : directory_iterator(path))
         {
@@ -1535,7 +1509,7 @@ IResponse^ HandleGetDMFiles(IRequest^ request)
         path += filesRequest->DMFolderName->Data();
         TRACEP(L"Scanning: ", path.c_str());
 
-        GetStringListResponse^ response = ref new GetStringListResponse(ResponseStatus::Success);
+        StringListResponse^ response = ref new StringListResponse(ResponseStatus::Success);
 
         for (const directory_entry& dirEntry : directory_iterator(path))
         {

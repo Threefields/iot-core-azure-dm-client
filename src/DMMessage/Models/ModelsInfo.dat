@@ -43,6 +43,6 @@ MODEL_REQDEF(   SetWifiConfiguration,         91, SetWifiConfigurationRequest,  
 MODEL_ALLDEF(   GetWifiDetails,               92, GetWifiDetailsRequest,                GetWifiDetailsResponse )
 MODEL_REQDEF(   SetEventTracingConfiguration,100, SetEventTracingConfigurationRequest,  StringResponse )
 MODEL_ALLDEF(   GetEventTracingConfiguration,101, GetEventTracingConfigurationRequest,  GetEventTracingConfigurationResponse )
-MODEL_ALLDEF(   GetDMFolders,                110, GetDMFoldersRequest,                  GetStringListResponse )
-MODEL_REQDEF(   GetDMFiles,                  111, GetDMFilesRequest,                    GetStringListResponse )
+MODEL_ALLDEF(   GetDMFolders,                110, GetDMFoldersRequest,                  StringListResponse )
+MODEL_REQDEF(   GetDMFiles,                  111, GetDMFilesRequest,                    StringListResponse )
 MODEL_REQDEF(   DeleteDMFile,                112, DeleteDMFileRequest,                  StringResponse )

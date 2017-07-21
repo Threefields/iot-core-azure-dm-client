@@ -30,6 +30,7 @@ THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "StartupApp.h"
 #include "StatusCodeResponse.h"
 #include "StringResponse.h"
+#include "StringListResponse.h"
 #include "TimeInfo.h"
 #include "TpmRequests.h"
 #include "WifiConfiguration.h"

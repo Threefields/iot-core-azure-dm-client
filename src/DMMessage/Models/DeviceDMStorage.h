@@ -12,6 +12,7 @@ IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMA
 WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH
 THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
+
 #pragma once
 #include "IRequestIResponse.h"
 #include "SerializationHelper.h"
@@ -48,7 +49,6 @@ namespace Microsoft { namespace Devices { namespace Management { namespace Messa
 
         virtual Blob^ Serialize()
         {
-
             JsonObject^ jsonObject = ref new JsonObject();
             jsonObject->Insert("folderName", JsonValue::CreateStringValue(DMFolderName));
             return SerializationHelper::CreateBlobFromJson((uint32_t)Tag, jsonObject);
@@ -99,52 +99,5 @@ namespace Microsoft { namespace Devices { namespace Management { namespace Messa
             DMMessageKind get();
         }
     };
-
-    public ref class GetStringListResponse sealed : public IResponse
-    {
-        StatusCodeResponse statusCodeResponse;
-    public:
-        property IVector<String^>^ List;
-
-        GetStringListResponse(ResponseStatus status) : statusCodeResponse(status, this->Tag)
-        {
-            List = ref new Vector<String^>();
-        }
-
-        virtual Blob^ Serialize()
-        {
-            JsonArray^ jsonArray = ref new JsonArray();
-            for each (String^ folder in List)
-            {
-                jsonArray->Append(JsonValue::CreateStringValue(folder));
-            }
-
-            JsonObject^ jsonObject = ref new JsonObject();
-            jsonObject->Insert("list", jsonArray);
-            return SerializationHelper::CreateBlobFromJson((uint32_t)Tag, jsonObject);
-        }
-
-        static IDataPayload^ Deserialize(Blob^ blob)
-        {
-            String^ str = SerializationHelper::GetStringFromBlob(blob);
-            JsonObject^ jsonObject = JsonObject::Parse(str);
-            auto result = ref new GetStringListResponse(ResponseStatus::Success);
-            JsonArray^ jsonArray = jsonObject->Lookup("list")->GetArray();
-            for (unsigned int i = 0; i < jsonArray->Size; ++i)
-            {
-                result->List->Append(jsonArray->GetStringAt(i));
-            }
-            return result;
-        }
-
-        virtual property ResponseStatus Status {
-            ResponseStatus get() { return statusCodeResponse.Status; }
-        }
-
-        virtual property DMMessageKind Tag {
-            DMMessageKind get();
-        }
-    };
-
 }
 }}}

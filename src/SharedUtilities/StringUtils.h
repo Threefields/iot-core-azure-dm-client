@@ -5,8 +5,6 @@
 
 namespace Utils
 {
-
-    // String helpers
     std::string WideToMultibyte(const wchar_t* s);
     std::wstring MultibyteToWide(const char* s);
 
@@ -52,5 +50,4 @@ namespace Utils
         messageStream << s << param;
         return messageStream.str();
     }
-
 }

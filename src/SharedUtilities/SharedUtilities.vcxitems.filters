@@ -36,7 +36,6 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)TimeHelpers.h">
       <Filter>Headers</Filter>
     </ClInclude>
-    <ClInclude Include="$(MSBuildThisFileDirectory)Impersonator.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Permissions\PermissionsManager.h">
       <Filter>Headers\Permissions</Filter>
     </ClInclude>
@@ -46,7 +45,12 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)Permissions\PermissionsTracer.h">
       <Filter>Headers\Permissions</Filter>
     </ClInclude>
-    <ClInclude Include="$(MSBuildThisFileDirectory)StringUtils.h" />
+    <ClInclude Include="D:\Projs\DM.0627\iot-core-azure-dm-client\src\SharedUtilities\StringUtils.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Projs\DM.0627\iot-core-azure-dm-client\src\SharedUtilities\Impersonator.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="$(MSBuildThisFileDirectory)DMException.cpp">
@@ -67,7 +71,6 @@
     <ClCompile Include="$(MSBuildThisFileDirectory)TimeHelpers.cpp">
       <Filter>Sources</Filter>
     </ClCompile>
-    <ClCompile Include="$(MSBuildThisFileDirectory)Impersonator.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)Permissions\PermissionsManager.cpp">
       <Filter>Sources\Permissions</Filter>
     </ClCompile>
@@ -77,6 +80,11 @@
     <ClCompile Include="$(MSBuildThisFileDirectory)Permissions\PermissionsTracer.cpp">
       <Filter>Sources\Permissions</Filter>
     </ClCompile>
-    <ClCompile Include="$(MSBuildThisFileDirectory)StringUtils.cpp" />
+    <ClCompile Include="D:\Projs\DM.0627\iot-core-azure-dm-client\src\SharedUtilities\StringUtils.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Projs\DM.0627\iot-core-azure-dm-client\src\SharedUtilities\Impersonator.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

@@ -12,6 +12,7 @@ IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMA
 WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH
 THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
+
 #pragma once
 #include <string>
 #include "IRequestIResponse.h"
@@ -53,7 +54,6 @@ namespace Microsoft { namespace Devices { namespace Management { namespace Messa
             configuration->TraceLevel = jsonObject->GetNamedString(L"traceLevel");
             configuration->Keywords = jsonObject->GetNamedString(L"keywords");
             configuration->Enabled = jsonObject->GetNamedBoolean(L"enabled");
-
             return configuration;
         }
     };
@@ -86,8 +86,6 @@ namespace Microsoft { namespace Devices { namespace Management { namespace Messa
                 provider->ToJsonObject(jsonObjectProperties);
                 targetJsonObject->Insert(provider->Guid, jsonObjectProperties);
             }
-
-            OutputDebugString(targetJsonObject->Stringify()->Data());
 
             return targetJsonObject;
         }
@@ -133,7 +131,6 @@ namespace Microsoft { namespace Devices { namespace Management { namespace Messa
                     break;
                 }
             }
-
             return configuration;
         }
     };
@@ -179,49 +176,37 @@ namespace Microsoft { namespace Devices { namespace Management { namespace Messa
 
         virtual Blob^ Serialize()
         {
-            // native to JsonObject
             JsonObject^ jsonObject = ref new JsonObject();
             for each (CollectorDesiredConfiguration^ collector in Collectors)
             {
                 JsonObject^ jsonObjectProperties = collector->ToJsonObject();
                 jsonObject->Insert(collector->Name, jsonObjectProperties);
             }
-
-            OutputDebugString(jsonObject->Stringify()->Data());
-
-            // JsonObject to Blob.
             return SerializationHelper::CreateBlobFromJson((uint32_t)Tag, jsonObject);
         }
 
         static IDataPayload^ Deserialize(Blob^ blob)
         {
-            // CollectorListConfiguration^ list = CollectorListConfiguration::Deserialize(blob);
-
-            // create object of self,
-            SetEventTracingConfigurationRequest^ self = ref new SetEventTracingConfigurationRequest();
-
-            // get string from blob,
+            SetEventTracingConfigurationRequest^ request = ref new SetEventTracingConfigurationRequest();
             String^ str = SerializationHelper::GetStringFromBlob(blob);
-
-            // parse string into json,
             JsonObject^ jsonObject = JsonObject::Parse(str);
 
-            // copy from json to self
             IIterator<IKeyValuePair<String^, IJsonValue^>^>^ it = jsonObject->First();
             while (it->HasCurrent)
             {
                 CollectorDesiredConfiguration^ collectorConfiguration = CollectorDesiredConfiguration::FromJsonObject(it->Current->Key, it->Current->Value);
-                self->Collectors->Append(collectorConfiguration);
+                request->Collectors->Append(collectorConfiguration);
                 if (!it->MoveNext())
                 {
                     break;
                 }
             }
 
-            return self;
+            return request;
         }
 
-        virtual property DMMessageKind Tag {
+        virtual property DMMessageKind Tag
+        {
             DMMessageKind get();
         }
     };
@@ -232,15 +217,18 @@ namespace Microsoft { namespace Devices { namespace Management { namespace Messa
     public:
         GetEventTracingConfigurationRequest() {}
 
-        virtual Blob^ Serialize() {
+        virtual Blob^ Serialize()
+        {
             return SerializationHelper::CreateEmptyBlob((uint32_t)Tag);
         }
 
-        static IDataPayload^ Deserialize(Blob^ blob) {
+        static IDataPayload^ Deserialize(Blob^ blob)
+        {
             return ref new GetEventTracingConfigurationRequest();
         }
 
-        virtual property DMMessageKind Tag {
+        virtual property DMMessageKind Tag
+        {
             DMMessageKind get();
         }
     };
@@ -269,11 +257,11 @@ namespace Microsoft { namespace Devices { namespace Management { namespace Messa
         static CollectorReportedConfiguration^ FromJsonObject(String^ name, IJsonValue^ jsonValue)
         {
             auto configObject = ref new CollectorReportedConfiguration();
+            configObject->Name = name;
             if (jsonValue->ValueType == JsonValueType::Object)
             {
                 JsonObject^ jsonObject = jsonValue->GetObject();
                 configObject->CSPConfiguration = CollectorCSPConfiguration::FromJsonObject(jsonObject);
-                configObject->Name = name;
                 configObject->ReportToDeviceTwin = jsonObject->Lookup(L"reportToDeviceTwin")->GetString();
             }
             return configObject;
@@ -300,8 +288,6 @@ namespace Microsoft { namespace Devices { namespace Management { namespace Messa
                 JsonObject^ jsonObjectProperties = collector->ToJsonObject();
                 jsonObject->Insert(collector->Name, jsonObjectProperties);
             }
-
-            OutputDebugString(jsonObject->Stringify()->Data());
             return jsonObject;
         }
 
@@ -315,35 +301,32 @@ namespace Microsoft { namespace Devices { namespace Management { namespace Messa
             return SerializationHelper::CreateBlobFromJson((uint32_t)Tag, ToJsonObject());
         }
 
-        static IDataPayload^ Deserialize(Blob^ blob) {
-            // create object of self,
-            auto self = ref new GetEventTracingConfigurationResponse(ResponseStatus::Success);
-
-            // get string from blob,
+        static IDataPayload^ Deserialize(Blob^ blob)
+        {
+            auto response = ref new GetEventTracingConfigurationResponse(ResponseStatus::Success);
             String^ str = SerializationHelper::GetStringFromBlob(blob);
-
-            // parse string into json,
             JsonObject^ jsonObject = JsonObject::Parse(str);
 
-            // copy from json to self
             IIterator<IKeyValuePair<String^, IJsonValue^>^>^ it = jsonObject->First();
             while (it->HasCurrent)
             {
                 CollectorReportedConfiguration^ collectorConfiguration = CollectorReportedConfiguration::FromJsonObject(it->Current->Key, it->Current->Value);
-                self->Collectors->Append(collectorConfiguration);
+                response->Collectors->Append(collectorConfiguration);
                 if (!it->MoveNext())
                 {
                     break;
                 }
             }
-            return self;
+            return response;
         }
 
-        virtual property ResponseStatus Status {
+        virtual property ResponseStatus Status
+        {
             ResponseStatus get() { return statusCodeResponse.Status; }
         }
 
-        virtual property DMMessageKind Tag {
+        virtual property DMMessageKind Tag
+        {
             DMMessageKind get();
         }
     };

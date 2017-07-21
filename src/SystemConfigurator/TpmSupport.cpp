@@ -46,8 +46,6 @@ static std::string RunLimpet(const std::wstring& params)
 
     unsigned long returnCode;
 
-    TRACE(fullCommand);
-
     Utils::LaunchProcess(fullCommand, returnCode, output);
 
     return output;
