@@ -45,10 +45,10 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)Permissions\PermissionsTracer.h">
       <Filter>Headers\Permissions</Filter>
     </ClInclude>
-    <ClInclude Include="D:\Projs\DM.0627\iot-core-azure-dm-client\src\SharedUtilities\StringUtils.h">
+    <ClInclude Include="$(MSBuildThisFileDirectory)Impersonator.h">
       <Filter>Headers</Filter>
     </ClInclude>
-    <ClInclude Include="D:\Projs\DM.0627\iot-core-azure-dm-client\src\SharedUtilities\Impersonator.h">
+    <ClInclude Include="$(MSBuildThisFileDirectory)StringUtils.h">
       <Filter>Headers</Filter>
     </ClInclude>
   </ItemGroup>
@@ -80,10 +80,10 @@
     <ClCompile Include="$(MSBuildThisFileDirectory)Permissions\PermissionsTracer.cpp">
       <Filter>Sources\Permissions</Filter>
     </ClCompile>
-    <ClCompile Include="D:\Projs\DM.0627\iot-core-azure-dm-client\src\SharedUtilities\StringUtils.cpp">
+    <ClCompile Include="$(MSBuildThisFileDirectory)Impersonator.cpp">
       <Filter>Sources</Filter>
     </ClCompile>
-    <ClCompile Include="D:\Projs\DM.0627\iot-core-azure-dm-client\src\SharedUtilities\Impersonator.cpp">
+    <ClCompile Include="$(MSBuildThisFileDirectory)StringUtils.cpp">
       <Filter>Sources</Filter>
     </ClCompile>
   </ItemGroup>

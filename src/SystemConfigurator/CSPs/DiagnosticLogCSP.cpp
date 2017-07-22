@@ -267,13 +267,13 @@ void DiagnosticLogCSP::CreateEtlFile(CollectorDesiredConfiguration^ collector)
     // Construct the data channel...
     wstring collectorFileCSPPath;
     collectorFileCSPPath += CSPDataChannel;
-    collectorFileCSPPath += L"\\";
+    collectorFileCSPPath += L"/";
     collectorFileCSPPath += collector->Name->Data();
 
     // Read data from CSP into our buffers...
     vector<vector<char>> decryptedEtlBuffer;
     int blockCount = 0;
-    if (!MdmProvision::TryGetNumber(collectorFileCSPPath + L"/" + CSPBlockCount, blockCount))
+    if (MdmProvision::TryGetNumber(collectorFileCSPPath + L"/" + CSPBlockCount, blockCount))
     {
         for (int i = 0; i < blockCount; ++i)
         {
