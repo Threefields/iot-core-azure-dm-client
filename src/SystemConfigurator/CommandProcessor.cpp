@@ -12,8 +12,8 @@ IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMA
 WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH 
 THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
+
 #include "stdafx.h"
-#include <filesystem>
 #include <fstream>
 #include "..\SharedUtilities\Logger.h"
 #include "..\SharedUtilities\DMRequest.h"
@@ -21,14 +21,15 @@ THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "CSPs\MdmProvision.h"
 #include "CSPs\CertificateInfo.h"
 #include "CSPs\CertificateManagement.h"
-#include "CSPs\RebootCSP.h"
-#include "CSPs\EnterpriseModernAppManagementCSP.h"
-#include "CSPs\WifiCsp.h"
 #include "CSPs\CustomDeviceUiCsp.h"
 #include "CSPs\DeviceHealthAttestationCSP.h"
+#include "CSPs\EnterpriseModernAppManagementCSP.h"
+#include "CSPs\DiagnosticLogCSP.h"
+#include "CSPs\RebootCSP.h"
+#include "CSPs\WifiCsp.h"
 #include "AppCfg.h"
+#include "DMStorage.h"
 #include "TimeCfg.h"
-#include "AppCfg.h"
 #include "TpmSupport.h"
 #include "Permissions\PermissionsManager.h"
 
@@ -36,12 +37,20 @@ THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 using namespace Microsoft::Devices::Management::Message;
 using namespace std;
-using namespace experimental::filesystem;
 using namespace Windows::Data::Json;
 using namespace Windows::Foundation::Collections;
 
 const wchar_t* WURingRegistrySubKey = L"SYSTEM\\Platform\\DeviceTargetingInfo";
 const wchar_t* WURingPropertyName = L"TargetRing";
+
+StringResponse^ ReportError(const string& context, const DMException& e)
+{
+    string debugMessage = "Error: " + context;
+    TRACEP(debugMessage.c_str(), e.what());
+    auto errorMessageCStr = Utils::MultibyteToWide(e.what());
+    auto responseMessage = ref new String(errorMessageCStr.c_str(), errorMessageCStr.length());
+    return ref new StringResponse(ResponseStatus::Failure, responseMessage, DMMessageKind::ErrorResponse);
+}
 
 IResponse^ HandleFactoryReset(IRequest^ request)
 {
@@ -1105,147 +1114,17 @@ IResponse^ HandleDeviceHealthAttestationGetReport(IRequest^ request)
     }
 }
 
-wstring ReadRegistryValue(const wstring& registryPath, const wstring& propName, const wstring& propDefaultValue)
-{
-    wstring propValue;
-    if (ERROR_SUCCESS != Utils::TryReadRegistryValue(registryPath, propName, propValue))
-    {
-        propValue = propDefaultValue;
-    }
-    return propValue;
-}
-
 IResponse^ HandleGetEventTracingConfiguration(IRequest^ request)
 {
     TRACE(__FUNCTION__);
 
     try
     {
-        auto configurationRequest = dynamic_cast<GetEventTracingConfigurationRequest^>(request);
-
-        wstring path = L"./Vendor/MSFT/DiagnosticLog/EtwLog/Collectors?list=StructData";
-
-        map<wstring, CollectorReportedConfiguration^> collectors;
-
-        GetEventTracingConfigurationResponse^ response = ref new GetEventTracingConfigurationResponse(ResponseStatus::Success);
-        response->Collectors = ref new Vector<CollectorReportedConfiguration^>();
-
-        std::function<void(std::vector<std::wstring>&, std::wstring&)> valueHandler =
-            [response, &collectors](vector<wstring>& uriTokens, wstring& value)
-        {
-            CollectorReportedConfiguration^ currentCollector;
-
-            if (uriTokens.size() < 7)
-            {
-                return;
-            }
-
-            wstring cspCollectorName = uriTokens[6];
-
-            // 0/__1___/_2__/______3______/__4___/____5_____/___6___/
-            // ./Vendor/MSFT/DiagnosticLog/EtwLog/Collectors/AzureDM
-            map<wstring, CollectorReportedConfiguration^>::iterator it = collectors.find(cspCollectorName);
-            if (it == collectors.end())
-            {
-                wstring registryPath = IoTDMRegistryEventTracing;
-                registryPath += L"\\";
-                registryPath += cspCollectorName.c_str();
-
-                currentCollector = ref new CollectorReportedConfiguration();
-                currentCollector->Name = ref new String(cspCollectorName.c_str());
-
-                wstring reportToDeviceTwin = ReadRegistryValue(registryPath, IoTDMRegistryReportToDeviceTwin, L"no");
-                currentCollector->ReportToDeviceTwin = ref new String(reportToDeviceTwin.c_str());
-                currentCollector->CSPConfiguration->LogFileFolder = ref new String(ReadRegistryValue(registryPath, IoTDMRegistryEventTracingLogFileFolder, cspCollectorName).c_str());
-
-                response->Collectors->Append(currentCollector);
-
-                collectors[cspCollectorName] = currentCollector;
-            }
-            else
-            {
-                currentCollector = it->second;
-            }
-
-            if (uriTokens.size() >= 8)
-            {
-                // 0/__1___/_2__/______3______/__4___/____5_____/___6___/____7______/
-                // ./Vendor/MSFT/DiagnosticLog/EtwLog/Collectors/AzureDM/TraceStatus
-
-                if (uriTokens[7] == L"TraceStatus")
-                {
-                    currentCollector->CSPConfiguration->Started = std::stoi(value) == 1 ? L"yes" : L"no";
-                }
-                else if (uriTokens[7] == L"TraceLogFileMode")
-                {
-                    currentCollector->CSPConfiguration->TraceLogFileMode = std::stoi(value) == 1 ? L"sequential" : L"circular";
-                }
-                else if (uriTokens[7] == L"LogFileSizeLimitMB")
-                {
-                    currentCollector->CSPConfiguration->LogFileSizeLimitMB = std::stoi(value);
-                }
-            }
-
-            if (uriTokens.size() >= 9)
-            {
-                // 0/__1___/_2__/______3______/__4___/____5_____/___6___/____7____/_8__
-                // ./Vendor/MSFT/DiagnosticLog/EtwLog/Collectors/AzureDM/Providers/guid
-
-                if (currentCollector->CSPConfiguration->Providers == nullptr)
-                {
-                    currentCollector->CSPConfiguration->Providers = ref new Vector<ProviderConfiguration^>();
-                }
-
-                ProviderConfiguration^ currentProvider;
-                for (auto provider : currentCollector->CSPConfiguration->Providers)
-                {
-                    if (0 == _wcsicmp(provider->Guid->Data(), uriTokens[8].c_str()))
-                    {
-                        currentProvider = provider;
-                    }
-                }
-
-                if (currentProvider == nullptr)
-                {
-                    ProviderConfiguration^ provider = ref new ProviderConfiguration();
-                    provider->Guid = ref new String(uriTokens[8].c_str());
-                    currentCollector->CSPConfiguration->Providers->Append(provider);
-
-                    currentProvider = provider;
-                }
-
-                if (uriTokens.size() >= 10)
-                {
-                    // 0/__1___/_2__/______3______/__4___/____5_____/___6___/___7_____/_8__/____9____
-                    // ./Vendor/MSFT/DiagnosticLog/EtwLog/Collectors/AzureDM/Providers/guid/TraceLevel
-
-                    if (uriTokens[9] == L"TraceLevel")
-                    {
-                        currentProvider->TraceLevel = ref new String(value.c_str());
-                    }
-                    else if (uriTokens[9] == L"Keywords")
-                    {
-                        currentProvider->Keywords = ref new String(value.c_str());
-                    }
-                    else if (uriTokens[9] == L"State")
-                    {
-                        // ToDo: case senitive!
-                        currentProvider->Enabled = value == L"true" ? true : false;
-                    }
-                }
-            }
-        };
-
-        MdmProvision::RunGetStructData(path, valueHandler);
-
-        return response;
+        return DiagnosticLogCSP::HandleGetEventTracingConfiguration(request);
     }
     catch (const DMException& e)
     {
-        TRACEP("ERROR DMCommand::HandleGetEventTracingConfiguration: ", e.what());
-        auto errorMessageCStr = Utils::MultibyteToWide(e.what());
-        auto errorMessage = ref new String(errorMessageCStr.c_str(), errorMessageCStr.length());
-        return ref new StringResponse(ResponseStatus::Failure, errorMessage, DMMessageKind::ErrorResponse);
+        return ReportError("DMCommand::HandleGetEventTracingConfiguration: ", e);
     }
 }
 
@@ -1255,207 +1134,11 @@ IResponse^ HandleSetEventTracingConfiguration(IRequest^ request)
 
     try
     {
-        // ToDo: There is a bug in the CSP where if the Documents folder
-        //       does not exist, it fails to start capturing events.
-        //       To work around that, we are making sure the documents 
-        //       folder exists.
-        Utils::EnsureFolderExists(L"C:\\Data\\Users\\Public\\Documents");
-
-        const wstring cspRoot = L"./Vendor/MSFT/DiagnosticLog/EtwLog/Collectors";
-
-        auto eventTracingConfiguration = dynamic_cast<SetEventTracingConfigurationRequest^>(request);
-        for each (CollectorDesiredConfiguration^ collector in eventTracingConfiguration->Collectors)
-        {
-            TRACE(L"- Collector ------------------------");
-            TRACEP(L" ---- Apply  : ", collector->ApplyFromDeviceTwin->Data());
-            TRACEP(L" ---- Report : ", collector->ReportToDeviceTwin->Data());
-            TRACEP(L" ---- ---- Name               : ", collector->Name->Data());
-            MdmProvision::RunAdd(cspRoot, collector->Name->Data());
-
-            if (collector->CSPConfiguration == nullptr)
-            {
-                TRACE(L"Error: CSPConfiguration is nullptr.");
-            }
-            else
-            {
-                const wstring collectorCSPPath = cspRoot + L"/" + collector->Name->Data();
-
-                if (collector->CSPConfiguration->LogFileFolder == nullptr)
-                {
-                    TRACE(L"Error: CSPConfiguration->LogFileFolder is nullptr.");
-                }
-                else
-                {
-                    TRACEP(L" ---- ---- LogFileFolder      : ", collector->CSPConfiguration->LogFileFolder->Data());
-                }
-
-                wstring registryPath = IoTDMRegistryEventTracing;
-                registryPath += L"\\";
-                registryPath += collector->Name->Data();
-
-                Utils::WriteRegistryValue(registryPath, IoTDMRegistryReportToDeviceTwin, collector->ReportToDeviceTwin->Data());
-                Utils::WriteRegistryValue(registryPath, IoTDMRegistryEventTracingLogFileFolder, collector->CSPConfiguration->LogFileFolder->Data());
-
-                MdmProvision::RunSet(collectorCSPPath + L"/LogFileSizeLimitMB", collector->CSPConfiguration->LogFileSizeLimitMB);
-                MdmProvision::RunSet(collectorCSPPath + L"/TraceLogFileMode", collector->CSPConfiguration->TraceLogFileMode == L"sequential" ? 1 : 2);
-
-                wstring providersString = MdmProvision::RunGetString(collectorCSPPath + L"/Providers");
-
-                for each (ProviderConfiguration^ provider in collector->CSPConfiguration->Providers)
-                {
-                    wstring providerCSPPath = collectorCSPPath + L"/Providers/" + provider->Guid->Data();
-
-                    TRACE(L" ---- ---- Provider ------------------------");
-                    TRACEP(L" ---- ---- ---- Guid       : ", provider->Guid->Data());
-                    if (wstring::npos == providersString.find(provider->Guid->Data()))
-                    {
-                        wstring dummyEtl;
-                        dummyEtl += SC_CLEANUP_FOLDER;
-                        dummyEtl += L"\\DMAddProviderSession.etl";
-
-                        wstring xperfExe = L"C:\\windows\\system32\\xperf.exe";
-                        wstring xperfSession = L"DMAddProviderSession";
-                        wstring dummyXperfStartCmd;
-                        dummyXperfStartCmd += xperfExe;
-                        dummyXperfStartCmd += L" -start ";
-                        dummyXperfStartCmd += xperfSession;
-                        dummyXperfStartCmd += L" -f ";
-                        dummyXperfStartCmd += dummyEtl;
-                        dummyXperfStartCmd += L" -on ";
-                        dummyXperfStartCmd += provider->Guid->Data();
-
-                        unsigned long returnCode = 0;
-                        string output;
-                        Utils::LaunchProcess(dummyXperfStartCmd, returnCode, output);
-
-                        MdmProvision::RunAddTyped(providerCSPPath, L"node");
-
-                        wstring dummyXperfStopCmd;
-                        dummyXperfStopCmd += xperfExe;
-                        dummyXperfStopCmd += L" -stop ";
-                        dummyXperfStopCmd += xperfSession;
-                        Utils::LaunchProcess(dummyXperfStopCmd, returnCode, output);
-
-                        DeleteFile(dummyEtl.c_str());
-                    }
-
-                    int traceLevel = 0;
-                    if (provider->TraceLevel == L"critical")
-                    {
-                        traceLevel = 1;
-                    }
-                    else if (provider->TraceLevel == L"error")
-                    {
-                        traceLevel = 2;
-                    }
-                    else if (provider->TraceLevel == L"warning")
-                    {
-                        traceLevel = 3;
-                    }
-                    else if (provider->TraceLevel == L"information")
-                    {
-                        traceLevel = 4;
-                    }
-                    else if (provider->TraceLevel == L"verbose")
-                    {
-                        traceLevel = 5;
-                    }
-
-                    MdmProvision::RunSet(providerCSPPath + L"/State", provider->Enabled);
-                    MdmProvision::RunSet(providerCSPPath + L"/Keywords", wstring(provider->Keywords->Data()));
-                    MdmProvision::RunSet(providerCSPPath + L"/TraceLevel", traceLevel);
-                }
-
-                // Finally process the started/stopped status...
-                unsigned int traceStatus = MdmProvision::RunGetUInt(collectorCSPPath + L"/TraceStatus");
-                if (collector->CSPConfiguration->Started == L"yes")
-                {
-                    if (traceStatus == 0 /*stopped*/)
-                    {
-                        TRACE(L"Should start logging here!");
-                        MdmProvision::RunExecWithParameters(collectorCSPPath + L"/TraceControl", L"START");
-                    }
-                }
-                else
-                {
-                    if (traceStatus == 1 /*started*/)
-                    {
-                        TRACE(L"Should stop logging here!");
-                        MdmProvision::RunExecWithParameters(collectorCSPPath + L"/TraceControl", L"STOP");
-
-                        // ToDo: Make sure the filefolder does not have ..\ or relative path.
-                        wstring etlFileName;
-                        etlFileName += SC_CLEANUP_FOLDER;
-                        etlFileName += L"\\";
-                        etlFileName += collector->CSPConfiguration->LogFileFolder->Data();
-                        CreateDirectory(etlFileName.c_str(), NULL);
-
-                        etlFileName += L"\\";
-                        etlFileName += collector->Name->Data();
-
-                        time_t now;
-                        time(&now);
-
-                        tm* nowParsed = nullptr;
-                        errno_t errCode = localtime_s(nowParsed, &now);
-                        if (errCode != 0)
-                        {
-                            // ToDo: Throw an error...
-                        }
-                        
-                        basic_ostringstream<wchar_t> nowString;
-                        nowString << (nowParsed->tm_year + 1900) << L"_";
-                        nowString << setw(2) << setfill(L'0') << (nowParsed->tm_mon + 1) << L"_";
-                        nowString << setw(2) << setfill(L'0') << nowParsed->tm_mday << L"_";
-                        nowString << setw(2) << setfill(L'0') << nowParsed->tm_hour << L"_";
-                        nowString << setw(2) << setfill(L'0') << nowParsed->tm_min << L"_";
-                        nowString << setw(2) << setfill(L'0') << nowParsed->tm_sec;
-
-                        etlFileName += L"_";
-                        etlFileName += nowString.str();
-                        etlFileName += L".etl";
-
-                        TRACEP(L"File Name: ", etlFileName.c_str());
-
-                        wstring collectorFileCSPPath;
-                        collectorFileCSPPath += L"./Vendor/MSFT/DiagnosticLog/FileDownload/DMChannel/";
-                        collectorFileCSPPath += collector->Name->Data();
-
-                        vector<vector<char>> decryptedEtlBuffer;
-
-                        int blockCount = 0;
-                        if (MdmProvision::TryGetNumber(collectorFileCSPPath + L"/BlockCount", blockCount))
-                        {
-                            for (int i = 0; i < blockCount; ++i)
-                            {
-                                MdmProvision::RunSet(collectorFileCSPPath + L"/BlockIndexToRead", i);
-                                wstring blockData = MdmProvision::RunGetBase64(collectorFileCSPPath + L"/BlockData");
-
-                                vector<char> decryptedBlock;
-                                Utils::Base64ToBinary(blockData, decryptedBlock);
-                                decryptedEtlBuffer.push_back(decryptedBlock);
-                            }
-                        }
-
-                        ofstream etlFile(etlFileName, ios::out | ios::binary);
-                        for (auto it = decryptedEtlBuffer.begin(); it != decryptedEtlBuffer.end(); it++)
-                        {
-                            etlFile.write(it->data(), it->size());
-                        }
-                        etlFile.close();
-                    }
-                }
-            }
-        }
-
-        return ref new StringResponse(ResponseStatus::Success, ref new String(), DMMessageKind::SetEventTracingConfiguration);
+        return DiagnosticLogCSP::HandleSetEventTracingConfiguration(request);
     }
     catch (const DMException& e)
     {
-        TRACEP("ERROR DMCommand::HandleSetEventTracingConfiguration: ", e.what());
-        auto errorMessageCStr = Utils::MultibyteToWide(e.what());
-        auto errorMessage = ref new String(errorMessageCStr.c_str(), errorMessageCStr.length());
-        return ref new StringResponse(ResponseStatus::Failure, errorMessage, DMMessageKind::ErrorResponse);
+        return ReportError("DMCommand::HandleSetEventTracingConfiguration: ", e);
     }
 }
 
@@ -1465,33 +1148,11 @@ IResponse^ HandleGetDMFolders(IRequest^ request)
 
     try
     {
-        wstring path = SC_CLEANUP_FOLDER;
-        TRACEP(L"Scanning: ", path.c_str());
-
-        StringListResponse^ response = ref new StringListResponse(ResponseStatus::Success);
-
-        for (const directory_entry& dirEntry : directory_iterator(path))
-        {
-            TRACEP(L"Found: ", dirEntry.path());
-
-            if (dirEntry.status().type() != file_type::directory)
-            {
-                continue;
-            }
-            wstring folderName = dirEntry.path().filename().c_str();
-            wprintf(L"Folder: %s\n", folderName.c_str());
-            String^ s = ref new String(folderName.c_str());
-            response->List->Append(s);
-        }
-
-        return response;
+        return DMStorage::HandleGetDMFolders(request);
     }
     catch (const DMException& e)
     {
-        TRACEP("ERROR DMCommand::HandleGetDMFolders: ", e.what());
-        auto errorMessageCStr = Utils::MultibyteToWide(e.what());
-        auto errorMessage = ref new String(errorMessageCStr.c_str(), errorMessageCStr.length());
-        return ref new StringResponse(ResponseStatus::Failure, errorMessage, DMMessageKind::ErrorResponse);
+        return ReportError("DMCommand::HandleGetDMFolders: ", e);
     }
 }
 
@@ -1501,45 +1162,13 @@ IResponse^ HandleGetDMFiles(IRequest^ request)
 
     try
     {
-        GetDMFilesRequest^ filesRequest = dynamic_cast<GetDMFilesRequest^>(request);
-
-        wstring path;
-        path += SC_CLEANUP_FOLDER;
-        path += L"\\";
-        path += filesRequest->DMFolderName->Data();
-        TRACEP(L"Scanning: ", path.c_str());
-
-        StringListResponse^ response = ref new StringListResponse(ResponseStatus::Success);
-
-        for (const directory_entry& dirEntry : directory_iterator(path))
-        {
-            TRACEP(L"Found  : ", dirEntry.path());
-            int type = (int)dirEntry.status().type();
-            TRACEP(L"-- Type1: ", type);
-            TRACEP(L"-- Type2: ", (int)file_type::regular);
-            if (type != (int)file_type::regular)
-            {
-                TRACE(L"Continuing...");
-                continue;
-            }
-
-            wstring fileName = dirEntry.path().filename().c_str();
-            TRACEP(L"File: ", fileName.c_str());
-            String^ s = ref new String(fileName.c_str());
-            response->List->Append(s);
-        }
-
-        return response;
+        return DMStorage::HandleGetDMFiles(request);
     }
     catch (const DMException& e)
     {
-        TRACEP("ERROR DMCommand::HandleGetDMFolders: ", e.what());
-        auto errorMessageCStr = Utils::MultibyteToWide(e.what());
-        auto errorMessage = ref new String(errorMessageCStr.c_str(), errorMessageCStr.length());
-        return ref new StringResponse(ResponseStatus::Failure, errorMessage, DMMessageKind::ErrorResponse);
+        return ReportError("DMCommand::HandleGetDMFiles: ", e);
     }
 }
-
 
 IResponse^ HandleDeleteDMFile(IRequest^ request)
 {
@@ -1547,27 +1176,11 @@ IResponse^ HandleDeleteDMFile(IRequest^ request)
 
     try
     {
-        DeleteDMFileRequest^ deleteRequest = dynamic_cast<DeleteDMFileRequest^>(request);
-
-        wstring path;
-        path += SC_CLEANUP_FOLDER;
-        path += L"\\";
-        path += deleteRequest->DMFolderName->Data();
-        path += L"\\";
-        path += deleteRequest->DMFileName->Data();
-
-        TRACEP(L"Deleting: ", path.c_str());
-
-        DeleteFile(path.c_str());
-
-        return ref new StringResponse(ResponseStatus::Success, L"", DMMessageKind::ErrorResponse);
+        return DMStorage::HandleDeleteDMFile(request);
     }
     catch (const DMException& e)
     {
-        TRACEP("ERROR DMCommand::HandleDeleteDMFile: ", e.what());
-        auto errorMessageCStr = Utils::MultibyteToWide(e.what());
-        auto errorMessage = ref new String(errorMessageCStr.c_str(), errorMessageCStr.length());
-        return ref new StringResponse(ResponseStatus::Failure, errorMessage, DMMessageKind::ErrorResponse);
+        return ReportError("DMCommand::HandleDeleteDMFile: ", e);
     }
 }
 

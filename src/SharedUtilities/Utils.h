@@ -61,6 +61,7 @@ namespace Utils
     void WriteRegistryValue(const std::wstring& subKey, const std::wstring& propName, const std::wstring& propValue);
     LSTATUS TryReadRegistryValue(const std::wstring& subKey, const std::wstring& propName, std::wstring& propValue);
     std::wstring ReadRegistryValue(const std::wstring& subKey, const std::wstring& propName);
+    std::wstring ReadRegistryValue(const std::wstring& subKey, const std::wstring& propName, const std::wstring& propDefaultValue);
 
     // File helpers
     bool FileExists(const std::wstring& fullFileName);

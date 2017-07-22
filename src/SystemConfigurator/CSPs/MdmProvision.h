@@ -14,8 +14,9 @@ THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 #pragma once
 
-#include "Utils.h"
 #include <string>
+#include "..\SharedUtilities\DMException.h"
+#include "..\SharedUtilities\Utils.h"
 
 class MdmProvision
 {

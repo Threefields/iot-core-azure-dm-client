@@ -477,6 +477,16 @@ namespace Utils
         return propValue;
     }
 
+    wstring ReadRegistryValue(const wstring& subKey, const wstring& propName, const wstring& propDefaultValue)
+    {
+        wstring propValue;
+        if (ERROR_SUCCESS != Utils::TryReadRegistryValue(subKey, propName, propValue))
+        {
+            propValue = propDefaultValue;
+        }
+        return propValue;
+    }
+
     wstring GetOSVersionString()
     {
         AnalyticsVersionInfo^ info = AnalyticsInfo::VersionInfo;
@@ -717,7 +727,7 @@ TRACEP("Command output : ", output.c_str());
         }
     }
 
-    wstring ToBase64(std::vector<char>& buffer)
+    wstring ToBase64(vector<char>& buffer)
     {
         TRACE(__FUNCTION__);
 
