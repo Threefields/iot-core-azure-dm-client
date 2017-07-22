@@ -25,4 +25,8 @@ public:
 
     static Microsoft::Devices::Management::Message::IResponse^
         HandleSetEventTracingConfiguration(Microsoft::Devices::Management::Message::IRequest^ request);
+private:
+    static std::wstring GetFormattedTime();
+    static void CreateEtlFile(Microsoft::Devices::Management::Message::CollectorDesiredConfiguration^ collector);
+    static void ApplyCollectorConfiguration(const std::wstring& cspRoot, Microsoft::Devices::Management::Message::CollectorDesiredConfiguration^ collector);
 };
