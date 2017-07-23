@@ -17,7 +17,7 @@
                            PropertyName="traceLevel" 
                            PropertyValue="{Binding Path=TraceLevel, Mode=TwoWay}"/>
             <local:DMTextBlock Title="Key Words" IsNumeric="False" IsOptional="False"
-                           PropertyName="keyWords" 
+                           PropertyName="keywords" 
                            PropertyValue="{Binding Path=Keywords, Mode=TwoWay}"/>
             <local:DMTextBlock Title="Enabled" IsNumeric="False" IsOptional="False"
                            PropertyName="enabled" 

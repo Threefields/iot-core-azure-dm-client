@@ -24,6 +24,10 @@ namespace DMDashboard
 {
     public partial class CollectorsDesiredStateControl : UserControl
     {
+        const string JsonDetailed = "detailed";
+        const string JsonMinimal = "minimal";
+        const string JsonNone = "none";
+
         public string SectionName
         {
             get
@@ -73,13 +77,13 @@ namespace DMDashboard
             switch (NonDeviceTwinCollectors.SelectedIndex)
             {
                 case 0: // detailed
-                    sb.Append("\"?\" : \"detailed\"\n");
+                    sb.Append("\"?\" : \"" + JsonDetailed + "\"\n");
                     break;
                 case 1: // minimal
-                    sb.Append("\"?\" : \"minimal\"\n");
+                    sb.Append("\"?\" : \"" + JsonMinimal + "\"\n");
                     break;
                 case 2: // none
-                    sb.Append("\"?\" : \"none\"\n");
+                    sb.Append("\"?\" : \"" + JsonNone + "\"\n");
                     break;
             }
 
@@ -116,10 +120,31 @@ namespace DMDashboard
             List<CollectorDesiredState> collectors = new List<CollectorDesiredState>();
             foreach (JProperty property in collectorsObject.Children())
             {
-                CollectorDesiredState collectorDesiredState = CollectorDesiredState.FromJson(property.Name, property.Value);
-                if (collectorDesiredState != null)
+                if (property.Name == "?")
                 {
-                    collectors.Add(collectorDesiredState);
+                    if (property.Value is JValue && property.Value.Type == JTokenType.String)
+                    {
+                        switch ((string)property.Value)
+                        {
+                            case JsonDetailed:
+                                NonDeviceTwinCollectors.SelectedIndex = 0;
+                                break;
+                            case JsonMinimal:
+                                NonDeviceTwinCollectors.SelectedIndex = 1;
+                                break;
+                            case JsonNone:
+                                NonDeviceTwinCollectors.SelectedIndex = 2;
+                                break;
+                        }
+                    }
+                }
+                else
+                {
+                    CollectorDesiredState collectorDesiredState = CollectorDesiredState.FromJson(property.Name, property.Value);
+                    if (collectorDesiredState != null)
+                    {
+                        collectors.Add(collectorDesiredState);
+                    }
                 }
             }
             CollectorsConfigurations = collectors;

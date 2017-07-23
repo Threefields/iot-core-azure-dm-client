@@ -71,6 +71,7 @@ namespace Microsoft.Devices.Management
 
             public async Task ReportPropertiesAsync(string sectionName, JToken properties)
             {
+                Logger.Log("HandlerCallback.ReportPropertiesAsync", LoggingLevel.Information);
                 try
                 {
                     JObject windowsNodeValue = new JObject();
@@ -89,6 +90,8 @@ namespace Microsoft.Devices.Management
 
             public async Task SendMessageAsync(string message, IDictionary<string, string> properties)
             {
+                Logger.Log("HandlerCallback.SendMessageAsync", LoggingLevel.Information);
+
                 await _deviceTwin.SendMessageAsync(message, properties);
             }
 

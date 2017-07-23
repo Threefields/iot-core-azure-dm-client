@@ -211,7 +211,28 @@ IResponse^ DiagnosticLogCSP::HandleGetEventTracingConfiguration(IRequest^ reques
 
                 if (uriTokens[9] == CSPTraceLevel)
                 {
-                    currentProvider->TraceLevel = ref new String(value.c_str());
+                    wstring jsonValue;
+                    if (value == L"1")
+                    {
+                        jsonValue = JsonTraceLevelCritical;
+                    }
+                    else if (value == L"2")
+                    {
+                        jsonValue = JsonTraceLevelError;
+                    }
+                    else if (value == L"3")
+                    {
+                        jsonValue = JsonTraceLevelWarning;
+                    }
+                    else if (value == L"4")
+                    {
+                        jsonValue = JsonTraceLevelInformation;
+                    }
+                    else if (value == L"5")
+                    {
+                        jsonValue = JsonTraceLevelVerbose;
+                    }
+                    currentProvider->TraceLevel = ref new String(jsonValue.c_str());
                 }
                 else if (uriTokens[9] == CSPKeywords)
                 {
