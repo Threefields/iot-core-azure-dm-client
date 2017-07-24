@@ -17,39 +17,84 @@ using DMDataContract;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Data;
+using System.Windows.Documents;
+using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
+using System.Windows.Shapes;
 
 namespace DMDashboard.StorageManagement
 {
-    public partial class DeviceDMStorage : Window
+    public partial class DeviceFileSelectionControl : UserControl
     {
         const string EnumDMFoldersMethod = "windows.enumDMFolders";
         const string EnumDMFilesMethod = "windows.enumDMFiles";
-        const string DeleteDMFileMethod = "windows.deleteDMFile";
-        const string PropList = "list";
         const string PropFolder = "folder";
-        const string PropFile = "file";
+        const string PropList = "list";
 
-        public DeviceDMStorage(DeviceTwinAndMethod azureDevice)
+        public DeviceTwinAndMethod AzureDevice
+        {
+            get
+            {
+                return _azureDevice;
+            }
+            set
+            {
+                _azureDevice = value;
+            }
+        }
+
+        public string SelectedFolderName
+        {
+            get
+            {
+                if (-1 == FoldersList.SelectedIndex)
+                {
+                    MessageBox.Show("Select a folder.");
+                    return "";
+                }
+
+                return (string)FoldersList.SelectedItem;
+            }
+        }
+
+        public string SelectedFileName
+        {
+            get
+            {
+                if (-1 == FilesList.SelectedIndex)
+                {
+                    MessageBox.Show("Select a file.");
+                    return "";
+                }
+
+                return (string)FilesList.SelectedItem;
+            }
+        }
+
+        public DeviceFileSelectionControl()
         {
             InitializeComponent();
-
-            _azureDevice = azureDevice;
         }
 
         private async Task EnumFolderAsync()
         {
             CancellationToken cancellationToken = new CancellationToken();
             string paramsString = "{}";
-            DeviceMethodReturnValue result = await _azureDevice.CallDeviceMethod(EnumDMFoldersMethod, paramsString, new TimeSpan(0, 0, 30), cancellationToken);
+            DeviceMethodReturnValue result = await AzureDevice.CallDeviceMethod(EnumDMFoldersMethod, paramsString, new TimeSpan(0, 0, 30), cancellationToken);
 
             FoldersList.Items.Clear();
 
             JObject jsonObject = (JObject)JsonConvert.DeserializeObject(result.Payload);
-            string [] folderNames = Utils.GetStringArray(jsonObject, PropList);
+            string[] folderNames = Utils.GetStringArray(jsonObject, PropList);
             foreach (string folderName in folderNames)
             {
                 FoldersList.Items.Add(folderName);
@@ -61,7 +106,7 @@ namespace DMDashboard.StorageManagement
             EnumFolderAsync();
         }
 
-        private async Task EnumFilesAsync()
+        public async Task EnumFilesAsync()
         {
             if (-1 == FoldersList.SelectedIndex)
             {
@@ -77,7 +122,7 @@ namespace DMDashboard.StorageManagement
             parameters.Append("  \"" + PropFolder + "\" : \"" + folderName + "\"\n");
             parameters.Append("}");
 
-            DeviceMethodReturnValue result = await _azureDevice.CallDeviceMethod(EnumDMFilesMethod, parameters.ToString(), new TimeSpan(0, 0, 30), cancellationToken);
+            DeviceMethodReturnValue result = await AzureDevice.CallDeviceMethod(EnumDMFilesMethod, parameters.ToString(), new TimeSpan(0, 0, 30), cancellationToken);
 
             FilesList.Items.Clear();
 
@@ -92,54 +137,6 @@ namespace DMDashboard.StorageManagement
         private void OnEnumFiles(object sender, RoutedEventArgs e)
         {
             EnumFilesAsync();
-        }
-
-        private async Task DeleteAsync()
-        {
-            if (-1 == FoldersList.SelectedIndex || -1 == FilesList.SelectedIndex)
-            {
-                MessageBox.Show("Select a folder and a file first.");
-                return;
-            }
-
-            string folderName = (string)FoldersList.SelectedItem;
-            string fileName = (string)FilesList.SelectedItem;
-
-            CancellationToken cancellationToken = new CancellationToken();
-            StringBuilder parameters = new StringBuilder();
-            parameters.Append("{\n");
-            parameters.Append("  \"" + PropFolder + "\" : \"" + folderName + "\",\n");
-            parameters.Append("  \"" + PropFile + "\" : \"" + fileName + "\"\n");
-            parameters.Append("}");
-            DeviceMethodReturnValue result = await _azureDevice.CallDeviceMethod(DeleteDMFileMethod, parameters.ToString(), new TimeSpan(0, 0, 30), cancellationToken);
-
-            EnumFilesAsync();
-        }
-
-        private void OnDelete(object sender, RoutedEventArgs e)
-        {
-            DeleteAsync();
-        }
-
-        private void OnRetrieve(object sender, RoutedEventArgs e)
-        {
-            if (-1 == FoldersList.SelectedIndex || -1 == FilesList.SelectedIndex)
-            {
-                MessageBox.Show("Select a folder and a file first.");
-                return;
-            }
-
-            string folderName = (string)FoldersList.SelectedItem;
-            string fileName = (string)FilesList.SelectedItem;
-
-            DMFileRetrieval dmFileRetrieval = new DMFileRetrieval(_azureDevice, folderName, fileName);
-            dmFileRetrieval.Owner = this;
-            dmFileRetrieval.ShowDialog();
-        }
-
-        private void OnCancel(object sender, RoutedEventArgs e)
-        {
-            Close();
         }
 
         DeviceTwinAndMethod _azureDevice;

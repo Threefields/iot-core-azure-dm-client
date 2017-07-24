@@ -20,15 +20,12 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-
 using Microsoft.Azure.Devices;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Microsoft.Devices.Management;
 using Microsoft.WindowsAzure.Storage;       // Namespace for CloudStorageAccount
-using Microsoft.WindowsAzure.Storage.Blob;  // Namespace for Blob storage types
 using System.Configuration;
-using Microsoft.Win32;
 using System.IO;
 using Microsoft.Devices.Management.DMDataContract;
 using DMDashboard.StorageManagement;
@@ -59,20 +56,6 @@ namespace DMDashboard
             public string action;
         }
 
-        class BlobInfo
-        {
-            public string Name { get; set; }
-            public string Type { get; set; }
-            public string Uri { get; set; }
-
-            public BlobInfo(string name, string type, string uri)
-            {
-                this.Name = name;
-                this.Type = type;
-                this.Uri = uri;
-            }
-        }
-
         Configuration config = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);
 
         public MainWindow()
@@ -87,7 +70,7 @@ namespace DMDashboard
             connectionString = this.config.AppSettings.Settings[StorageConnectionString];
             if (connectionString != null && !string.IsNullOrEmpty(connectionString.Value))
             {
-                StorageConnectionStringBox.Text = connectionString.Value;
+                AzureStorageExplorer.ConnectionString = connectionString.Value;
             }
 
             Desired_RootCATrustedCertificates_Root.ShowCertificateDetails += ShowCertificateDetails;
@@ -125,6 +108,11 @@ namespace DMDashboard
         private void OnExpandAzureStorage(object sender, RoutedEventArgs e)
         {
             ToggleUIElementVisibility(AzureStorageGrid);
+        }
+
+        private void OnExpandDeviceStorage(object sender, RoutedEventArgs e)
+        {
+            ToggleUIElementVisibility(DeviceStorageGrid);
         }
 
         private void OnExpandWindowsUpdatePolicy(object sender, RoutedEventArgs e)
@@ -200,7 +188,7 @@ namespace DMDashboard
             string parametersString = JsonConvert.SerializeObject(parameters);
             CancellationToken cancellationToken = new CancellationToken();
             DeviceMethodReturnValue result = await _deviceTwin.CallDeviceMethod(DTWindowsIoTNameSpace + ".manageAppLifeCycle", parametersString, new TimeSpan(0, 0, 30), cancellationToken);
-            MessageBox.Show("Reboot Command Result:\nStatus: " + result.Status + "\nReason: " + result.Payload);
+            System.Windows.MessageBox.Show("Reboot Command Result:\nStatus: " + result.Status + "\nReason: " + result.Payload);
         }
 
         private void OnStartApplication(object sender, RoutedEventArgs e)
@@ -211,60 +199,6 @@ namespace DMDashboard
         private void OnStopApplication(object sender, RoutedEventArgs e)
         {
             OnManageAppLifeCycle(AppLifeCycleAction.stopApp, LifeCyclePkgFamilyName.Text);
-        }
-
-        private void ListContainers(string connectionString)
-        {
-            CloudStorageAccount storageAccount = CloudStorageAccount.Parse(connectionString);
-            CloudBlobClient blobClient = storageAccount.CreateCloudBlobClient();
-
-            ContainersList.Items.Clear();
-            foreach (var container in blobClient.ListContainers("", ContainerListingDetails.None, null, null))
-            {
-                ContainersList.Items.Add(container.Name);
-            }
-
-            this.config.AppSettings.Settings[StorageConnectionString].Value = connectionString;
-            this.config.Save(ConfigurationSaveMode.Modified);
-        }
-
-        private void OnListContainers(object sender, RoutedEventArgs e)
-        {
-            ListContainers(StorageConnectionStringBox.Text);
-        }
-
-        private void OnListBlobs(object sender, RoutedEventArgs e)
-        {
-            if (ContainersList.SelectedIndex == -1)
-            {
-                return;
-            }
-
-            CloudStorageAccount storageAccount = CloudStorageAccount.Parse(StorageConnectionStringBox.Text);
-            CloudBlobClient blobClient = storageAccount.CreateCloudBlobClient();
-            CloudBlobContainer container = blobClient.GetContainerReference((string)ContainersList.SelectedItem);
-
-            List<BlobInfo> blobInfoList = new List<BlobInfo>();
-            foreach (IListBlobItem item in container.ListBlobs(null, false))
-            {
-                if (item.GetType() == typeof(CloudBlockBlob))
-                {
-                    CloudBlockBlob blob = (CloudBlockBlob)item;
-                    blobInfoList.Add(new BlobInfo(blob.Name, "BlockBlob", blob.Uri.ToString()));
-                }
-                else if (item.GetType() == typeof(CloudPageBlob))
-                {
-                    CloudPageBlob pageBlob = (CloudPageBlob)item;
-                    blobInfoList.Add(new BlobInfo(pageBlob.Name, "PageBlob", pageBlob.Uri.ToString()));
-
-                }
-                else if (item.GetType() == typeof(CloudBlobDirectory))
-                {
-                    CloudBlobDirectory directoryBlob = (CloudBlobDirectory)item;
-                    blobInfoList.Add(new BlobInfo("<dir>", "BlobDirectory", directoryBlob.Uri.ToString()));
-                }
-            }
-            BlobsList.ItemsSource = blobInfoList;
         }
 
         private void RebootInfoModelToUI(Microsoft.Devices.Management.RebootInfo.GetResponse rebootInfo)
@@ -439,7 +373,7 @@ namespace DMDashboard
         {
             CancellationToken cancellationToken = new CancellationToken();
             DeviceMethodReturnValue result = await _deviceTwin.CallDeviceMethod(DTWindowsIoTNameSpace + ".immediateReboot", "{}", new TimeSpan(0, 0, 30), cancellationToken);
-            MessageBox.Show("Reboot Command Result:\nStatus: " + result.Status + "\nReason: " + result.Payload);
+            System.Windows.MessageBox.Show("Reboot Command Result:\nStatus: " + result.Status + "\nReason: " + result.Payload);
         }
 
         private void OnRebootSystem(object sender, RoutedEventArgs e)
@@ -552,12 +486,20 @@ namespace DMDashboard
             SetDesired(DesiredDiagnosticLogs.SectionName, DesiredDiagnosticLogs.ToJson());
         }
 
-        private void OnManageDMStorage(object sender, RoutedEventArgs e)
+        private void OnDeviceDeleteFile(object sender, RoutedEventArgs e)
         {
-            DeviceDMStorage deviceDMStorage = new DeviceDMStorage(_deviceTwin);
-            deviceDMStorage.Owner = this;
-            deviceDMStorage.DataContext = null;
-            deviceDMStorage.ShowDialog();
+            DeviceDeleteFile deviceDeleteFile = new DeviceDeleteFile(_deviceTwin);
+            deviceDeleteFile.Owner = this;
+            deviceDeleteFile.DataContext = null;
+            deviceDeleteFile.ShowDialog();
+        }
+
+        private void OnDeviceUploadFile(object sender, RoutedEventArgs e)
+        {
+            DeviceUploadFile deviceUploadFile = new DeviceUploadFile(_deviceTwin);
+            deviceUploadFile.Owner = this;
+            deviceUploadFile.DataContext = null;
+            deviceUploadFile.ShowDialog();
         }
 
         private Microsoft.Devices.Management.WindowsUpdates.SetParams UIToWindowsUpdatesConfiguration()
@@ -728,13 +670,13 @@ namespace DMDashboard
 
         private async void ExportCertificateDetailsAsync(CertificateSelector sender, CertificateSelector.CertificateData certificateData)
         {
-            MessageBox.Show("Exporting certificate details from the device to Azure storage...");
+            System.Windows.MessageBox.Show("Exporting certificate details from the device to Azure storage...");
             string targetFileName = certificateData.Hash + ".json";
             DeviceMethodReturnValue result = await RequestCertificateDetailsAsync(AzureStorageConnectionString.Text, AzureStorageContainerName.Text, sender.CertificatesPath, certificateData.Hash, targetFileName);
             GetCertificateDetailsResponse response = JsonConvert.DeserializeObject<GetCertificateDetailsResponse>(result.Payload);
             if (response == null || response.Status != 0)
             {
-                MessageBox.Show("Error: could not schedule certificate export");
+                System.Windows.MessageBox.Show("Error: could not schedule certificate export");
                 return;
             }
 
@@ -778,7 +720,7 @@ namespace DMDashboard
 
             var cancellationToken = new CancellationToken();
             DeviceMethodReturnValue result = await this._deviceTwin.CallDeviceMethod(DTWindowsIoTNameSpace + ".getWifiDetails", parametersJson, new TimeSpan(0, 0, 30), cancellationToken);
-            MessageBox.Show("Get Wifi Profile Details Command Result:\nStatus: " + result.Status + "\nReason: " + result.Payload);
+            System.Windows.MessageBox.Show("Get Wifi Profile Details Command Result:\nStatus: " + result.Status + "\nReason: " + result.Payload);
         }
 
         private void PopulateExternalStorageFromJson(JObject jRoot)
@@ -793,7 +735,7 @@ namespace DMDashboard
 
         private void OnLoadProfile(object sender, RoutedEventArgs e)
         {
-            OpenFileDialog dlg = new OpenFileDialog();
+            Microsoft.Win32.OpenFileDialog dlg = new Microsoft.Win32.OpenFileDialog();
             dlg.DefaultExt = ".json";
             dlg.Filter = "json files (*.json)|*.json|All files (*.*)|*.*";
             bool? result = dlg.ShowDialog();
@@ -805,7 +747,7 @@ namespace DMDashboard
             object rootObject = JsonConvert.DeserializeObject(File.ReadAllText(dlg.FileName));
             if (!(rootObject is JObject))
             {
-                MessageBox.Show("Invalid json file content!");
+                System.Windows.MessageBox.Show("Invalid json file content!");
             }
 
             JObject jRoot = (JObject)rootObject;

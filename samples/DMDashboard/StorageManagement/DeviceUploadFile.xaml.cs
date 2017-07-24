@@ -13,34 +13,30 @@ WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN 
 THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-using System.Text;
-using System.Threading;
 using Microsoft.WindowsAzure.Storage;       // Namespace for CloudStorageAccount
 using Microsoft.WindowsAzure.Storage.Blob;  // Namespace for Blob storage types
 using System;
-using System.Diagnostics;
+using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 
 namespace DMDashboard.StorageManagement
 {
-    public partial class DMFileRetrieval : Window
+    public partial class DeviceUploadFile : Window
     {
-        const string UploadDMFileMethod = "windows.uploadDMFile";
         const string PropFolder = "folder";
         const string PropFile = "file";
         const string PropConnectionString = "connectionString";
         const string PropContainerName = "container";
+        const string UploadDMFileMethod = "windows.uploadDMFile";
 
-        public DMFileRetrieval(DeviceTwinAndMethod azureDevice, string deviceFolder, string deviceFile)
+        public DeviceUploadFile(DeviceTwinAndMethod azureDevice)
         {
             InitializeComponent();
 
             _azureDevice = azureDevice;
-            _deviceFolder = deviceFolder;
-            _deviceFile = deviceFile;
-
-            FileName.Text = deviceFolder + "\\" + deviceFile;
+            FileSelectionControl.AzureDevice = _azureDevice;
         }
 
         private void OnEnumContainers(object sender, RoutedEventArgs e)
@@ -55,87 +51,58 @@ namespace DMDashboard.StorageManagement
             }
         }
 
-        private async Task DownloadAsync(string connectionString, string containerName, string blobName, string localFolder)
+        private async Task UploadAsync()
         {
-            uint maxTries = 10;
-            uint wait = 2;  // in seconds
-            string localFile = localFolder + "\\" + blobName;
-            for (uint i = 0; i < maxTries; ++i)
+            string fileName = FileSelectionControl.SelectedFileName;
+            if (String.IsNullOrEmpty(fileName))
             {
-                try
-                {
-                    // Retrieve storage account from connection string.
-                    CloudStorageAccount storageAccount = CloudStorageAccount.Parse(connectionString);
-
-                    // Create the blob client.
-                    CloudBlobClient blobClient = storageAccount.CreateCloudBlobClient();
-
-                    // Retrieve a reference to a container.
-                    CloudBlobContainer container = blobClient.GetContainerReference(containerName);
-
-                    // ToDo: can we avoid throwing an exception?
-
-                    // Retrieve reference to a named blob.
-                    var blockBlob = container.GetBlockBlobReference(blobName);
-
-                    // Save blob contents to a file.
-                    await blockBlob.DownloadToFileAsync(localFile, System.IO.FileMode.CreateNew);
-
-                    break;
-                }
-                catch (Exception e)
-                {
-                    Debug.WriteLine("Error downloading the file! " + e.Message);
-                    // The file might not be there yet... try again in a bit...
-                    await System.Threading.Tasks.Task.Delay(TimeSpan.FromMilliseconds(1000 * wait));
-                }
+                return;
             }
-        }
 
-        private async Task GoAsync()
-        {
+            string folderName = FileSelectionControl.SelectedFolderName;
+            if (String.IsNullOrEmpty(folderName))
+            {
+                return;
+            }
+
             if (String.IsNullOrEmpty(AzureStorageConnectionString.Text))
             {
                 MessageBox.Show("Need to specify the Azure Storage connection string!");
                 return;
             }
+            string connectionString = AzureStorageConnectionString.Text;
 
             if (ContainersList.SelectedIndex == -1)
             {
                 MessageBox.Show("Need to select a target container first!");
                 return;
             }
-
-            string connectionString = AzureStorageConnectionString.Text;
             string containerName = (string)ContainersList.SelectedItem;
-            string localFolder = LocalFolder.Text;
+
 
             CancellationToken cancellationToken = new CancellationToken();
             StringBuilder parameters = new StringBuilder();
             parameters.Append("{\n");
-            parameters.Append("    \"" + PropFolder + "\": \"" + _deviceFolder + "\",");
-            parameters.Append("    \"" + PropFile + "\": \"" + _deviceFile + "\",");
+            parameters.Append("    \"" + PropFolder + "\": \"" + folderName + "\",");
+            parameters.Append("    \"" + PropFile + "\": \"" + fileName + "\",");
             parameters.Append("    \"" + PropConnectionString + "\": \"" + connectionString + "\",");
             parameters.Append("    \"" + PropContainerName + "\": \"" + containerName + "\"");
             parameters.Append("}\n");
             DeviceMethodReturnValue result = await _azureDevice.CallDeviceMethod(UploadDMFileMethod, parameters.ToString(), new TimeSpan(0, 0, 30), cancellationToken);
 
-            System.IO.Directory.CreateDirectory(localFolder);
-            DownloadAsync(connectionString, containerName, _deviceFile, localFolder);
+            MessageBox.Show("Triggered file upload...");
         }
 
-        private void OnGo(object sender, RoutedEventArgs e)
+        private void OnUpload(object sender, RoutedEventArgs e)
         {
-            GoAsync();
+            UploadAsync();
         }
 
-        private void OnCancel(object sender, RoutedEventArgs e)
+        private void OnClose(object sender, RoutedEventArgs e)
         {
             Close();
         }
 
         DeviceTwinAndMethod _azureDevice;
-        string _deviceFolder;
-        string _deviceFile;
     }
 }

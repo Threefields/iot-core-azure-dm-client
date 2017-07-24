@@ -124,6 +124,7 @@
       <HintPath>..\packages\Microsoft.AspNet.WebApi.Core.5.2.3\lib\net45\System.Web.Http.dll</HintPath>
       <Private>True</Private>
     </Reference>
+    <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml" />
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="System.Core" />
@@ -203,11 +204,17 @@
     <Compile Include="DiagnosticLogs\ProviderReportedStateListControl.xaml.cs">
       <DependentUpon>ProviderReportedStateListControl.xaml</DependentUpon>
     </Compile>
-    <Compile Include="StorageManagement\DeviceDMStorage.xaml.cs">
-      <DependentUpon>DeviceDMStorage.xaml</DependentUpon>
+    <Compile Include="StorageManagement\AzureStorageManager.xaml.cs">
+      <DependentUpon>AzureStorageManager.xaml</DependentUpon>
     </Compile>
-    <Compile Include="StorageManagement\DMFileRetrieval.xaml.cs">
-      <DependentUpon>DMFileRetrieval.xaml</DependentUpon>
+    <Compile Include="StorageManagement\DeviceDeleteFile.xaml.cs">
+      <DependentUpon>DeviceDeleteFile.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="StorageManagement\DeviceFileSelectionControl.xaml.cs">
+      <DependentUpon>DeviceFileSelectionControl.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="StorageManagement\DeviceUploadFile.xaml.cs">
+      <DependentUpon>DeviceUploadFile.xaml</DependentUpon>
     </Compile>
     <Compile Include="Wifi\WifiDetails.xaml.cs">
       <DependentUpon>WifiDetails.xaml</DependentUpon>
@@ -322,11 +329,19 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Include="StorageManagement\DeviceDMStorage.xaml">
+    <Page Include="StorageManagement\AzureStorageManager.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Include="StorageManagement\DMFileRetrieval.xaml">
+    <Page Include="StorageManagement\DeviceDeleteFile.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="StorageManagement\DeviceFileSelectionControl.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="StorageManagement\DeviceUploadFile.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
