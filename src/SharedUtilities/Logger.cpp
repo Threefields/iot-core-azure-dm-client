@@ -21,10 +21,13 @@ THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <filesystem>
 #include "StringUtils.h"
 #include "Logger.h"
+#include "ETWLogger.h"
 
 using namespace std;
 using namespace std::tr2::sys;
 using namespace std::experimental;
+
+Utils::ETWLogger gETWLogger;
 
 Logger::Logger(bool console, const wchar_t* logsRoot) :
     _console(console)
@@ -54,13 +57,18 @@ Logger::Logger(bool console, const wchar_t* logsRoot) :
     Log("----New Session----------------------------------------------------------------");
 }
 
-void Logger::Log(const char* message)
+void Logger::Log(const char* msg)
 {
-    wstring s = Utils::MultibyteToWide(message);
-    Log(s.c_str());
+    wstring s = Utils::MultibyteToWide(msg);
+    Log(Utils::ETWLogger::LoggingLevel::Information, s.c_str());
 }
 
-void Logger::Log(const wchar_t* message)
+void Logger::Log(const wchar_t* msg)
+{
+    Log(Utils::ETWLogger::LoggingLevel::Information, msg);
+}
+
+void Logger::Log(Utils::ETWLogger::LoggingLevel level, const wchar_t* msg)
 {
     SYSTEMTIME systemTime;
     GetLocalTime(&systemTime);
@@ -79,7 +87,7 @@ void Logger::Log(const wchar_t* message)
     wstring messageWithTime = formattedTime.str() + L" "
         + (systemTime.wHour >= 12 ? L"PM " : L"AM ")
         + L"[" + formattedThreadId.str() + L"] "
-        + message
+        + msg
         + L"\r\n";
 
     // share...
@@ -96,17 +104,31 @@ void Logger::Log(const wchar_t* message)
         outFile << messageWithTime;
         outFile.close();
     }
+
+    gETWLogger.Log(msg, level);
 }
 
-void Logger::Log(const char*  format, const char* param)
+void Logger::Log(const char* msg, const char* param)
 {
-    wstring f = Utils::MultibyteToWide(format);
+    Log(Utils::ETWLogger::LoggingLevel::Information, msg, param);
+}
+
+void Logger::Log(Utils::ETWLogger::LoggingLevel level, const char*  msg, const char* param)
+{
+    wstring m = Utils::MultibyteToWide(msg);
     wstring p = Utils::MultibyteToWide(param);
-    Log<const wchar_t*>(f.c_str(), p.c_str());
+    Log<const wchar_t*>(level, m.c_str(), p.c_str());
+
 }
 
-void Logger::Log(const char*  format, int param)
+void Logger::Log(const char*  msg, int param)
 {
-    wstring f = Utils::MultibyteToWide(format);
-    Log<int>(f.c_str(), param);
+    wstring s = Utils::MultibyteToWide(msg);
+    Log<int>(Utils::ETWLogger::LoggingLevel::Information, s.c_str(), param);
+}
+
+void Logger::Log(Utils::ETWLogger::LoggingLevel level, const char*  msg, int param)
+{
+    wstring s = Utils::MultibyteToWide(msg);
+    Log<int>(level, s.c_str(), param);
 }

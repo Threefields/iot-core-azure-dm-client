@@ -24,6 +24,7 @@ THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <stdio.h>
 #include <tchar.h>
 
+#define PROVIDER_NAME "CSPTests"
+// "84731A88-BAA8-4AD7-B78EA76DD918A5BC"
+#define PROVIVDER_GUID (0x84731A88, 0xBAA8, 0x4AD7, 0xB7, 0x8E, 0xA7, 0x6D, 0xD9, 0x18, 0xA5, 0xBC)
 
-
-// TODO: reference additional headers your program requires here

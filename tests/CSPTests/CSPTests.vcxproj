@@ -189,6 +189,7 @@
     <ClInclude Include="WifiManagementTest.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\src\SharedUtilities\ETWLogger.cpp" />
     <ClCompile Include="..\..\src\SharedUtilities\Logger.cpp" />
     <ClCompile Include="..\..\src\SharedUtilities\StringUtils.cpp" />
     <ClCompile Include="..\..\src\SharedUtilities\Utils.cpp" />

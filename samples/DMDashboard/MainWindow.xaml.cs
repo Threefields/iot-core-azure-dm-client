@@ -36,10 +36,8 @@ namespace DMDashboard
     {
         const string DTWindowsIoTNameSpace = "windows";
         const string DTRefreshing = "\"refreshing\"";
-        const string DTDesiredValuePrefix = "{ \"properties\" : { \"desired\" : { \"" + DTWindowsIoTNameSpace + "\" : ";
-        const string DTDesiredValueSuffix = "}}}";
-        const string DTDesiredObjectPrefix = DTDesiredValuePrefix + " {";
-        const string DTDesiredObjectSuffix = DTDesiredValueSuffix + "}";
+        const string DTRootNodeString = "{ \"properties\" : { \"desired\" : { \"" + DTWindowsIoTNameSpace + "\" : ";
+        const string DTRootNodeSuffixString = "}}}";
 
         const string IotHubConnectionString = "IotHubConnectionString";
         const string StorageConnectionString = "StorageConnectionString";
@@ -447,15 +445,18 @@ namespace DMDashboard
             await _deviceTwin.UpdateTwinData(jsonString);
         }
 
+        private async Task UpdateTwinData(string refreshingValue, string finalValue)
+        {
+            await UpdateTwinData(DTRootNodeString + refreshingValue + DTRootNodeSuffixString);
+            await UpdateTwinData(DTRootNodeString + finalValue + DTRootNodeSuffixString);
+        }
+
         private async Task SetDesired(string sectionName, string sectionValueString)
         {
-            string refreshingString = "\"" + sectionName + "\" : \"refreshing\"";
+            string refreshingValue = "{ \"" + sectionName + "\" : " + DTRefreshing + " }";
+            string finalValue = "{ " + sectionValueString  + " }";
 
-            // Remove existing...
-            await UpdateTwinData(DTDesiredObjectPrefix + refreshingString + DTDesiredObjectSuffix);
-
-            // (Re-)Add section...
-            await UpdateTwinData(DTDesiredObjectPrefix + sectionValueString + DTDesiredObjectSuffix);
+            await UpdateTwinData(refreshingValue, finalValue);
         }
 
         private void OnSetTimeInfo(object sender, RoutedEventArgs e)
@@ -563,6 +564,7 @@ namespace DMDashboard
         {
             StringBuilder json = new StringBuilder();
 
+            json.Append("{");
             json.Append(UIToExternalStorageModel().ToJson());
             json.Append(",");
             json.Append(TimeDesiredState.ToJson());
@@ -578,9 +580,9 @@ namespace DMDashboard
             json.Append(DeviceHealthAttestationDesiredState.ToJson());
             json.Append(",");
             json.Append(WifiDesiredState.ToJson());
+            json.Append("}");
 
-            UpdateTwinData(DTDesiredValuePrefix + DTRefreshing + DTDesiredValueSuffix);
-            UpdateTwinData(DTDesiredObjectPrefix + json.ToString() + DTDesiredObjectSuffix);
+            UpdateTwinData(DTRefreshing, json.ToString());
         }
 
         private void OnExpandApps(object sender, RoutedEventArgs e)

@@ -17,6 +17,7 @@ THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <mutex>
 #include <string>
 #include <sstream>
+#include "ETWLogger.h"
 
 #include "..\DMMessage\DMGarbageCollectorTempFolder.h"
 #define TRACE_LOGSROOT SC_CLEANUP_FOLDER
@@ -28,19 +29,35 @@ class Logger
 public:
     Logger(bool console, const wchar_t* logsRoot);
 
+    // Legacy (no logging level; defaults to information)
     void Log(const char*  message);
     void Log(const wchar_t*  message);
 
     template<class T>
-    void Log(const wchar_t* format, T param)
+    void Log(const wchar_t* msg, T param)
     {
         std::basic_ostringstream<wchar_t> message;
-        message << format << param;
+        message << msg << param;
         Log(message.str().c_str());
     }
 
-    void Log(const char* format, const char* param);
-    void Log(const char* format, int param);
+    void Log(const char* msg, const char* param);
+    void Log(const char* msg, int param);
+
+    // Logging level set...
+    void Log(Utils::ETWLogger::LoggingLevel level, const char*  msg);
+    void Log(Utils::ETWLogger::LoggingLevel level, const wchar_t*  msg);
+
+    template<class T>
+    void Log(Utils::ETWLogger::LoggingLevel level, const wchar_t* msg, T param)
+    {
+        std::basic_ostringstream<wchar_t> message;
+        message << msg << param;
+        Log(level, message.str().c_str());
+    }
+
+    void Log(Utils::ETWLogger::LoggingLevel level, const char* msg, const char* param);
+    void Log(Utils::ETWLogger::LoggingLevel level, const char* msg, int param);
 
 private:
     std::mutex _mutex;

@@ -347,7 +347,7 @@ void DiagnosticLogCSP::ApplyCollectorConfiguration(const wstring& cspRoot, Colle
     }
 
     // ETL files cannot be saved to the IoTDM folder.
-    // They have to be save to a subfolder of IoTDM.
+    // They have to be saved to a subfolder of IoTDM.
     if (collector->CSPConfiguration->LogFileFolder == nullptr ||
         collector->CSPConfiguration->LogFileFolder->Length() == 0)
     {

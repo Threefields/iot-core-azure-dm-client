@@ -120,6 +120,7 @@
     <ClInclude Include="SerializationHelper.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\SharedUtilities\ETWLogger.cpp" />
     <ClCompile Include="..\SharedUtilities\Logger.cpp" />
     <ClCompile Include="..\SharedUtilities\StringUtils.cpp" />
     <ClCompile Include="DMMessage.cpp" />

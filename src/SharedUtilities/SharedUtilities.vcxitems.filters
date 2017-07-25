@@ -51,6 +51,7 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)StringUtils.h">
       <Filter>Headers</Filter>
     </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)ETWLogger.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="$(MSBuildThisFileDirectory)DMException.cpp">
@@ -86,5 +87,6 @@
     <ClCompile Include="$(MSBuildThisFileDirectory)StringUtils.cpp">
       <Filter>Sources</Filter>
     </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)ETWLogger.cpp" />
   </ItemGroup>
 </Project>
