@@ -30,7 +30,3 @@ THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <exception>
 #include <deque>
 #include <windows.h>
-
-#define PROVIDER_NAME "SystemConfigurator"
-// "D5DCA284-EAB3-46EE-A42A-B5642DE4567F"
-#define PROVIVDER_GUID (0xD5DCA284, 0xEAB3, 0x46EE, 0xA4, 0x2A, 0xB5, 0x64, 0x2D, 0xE4, 0x56, 0x7F)

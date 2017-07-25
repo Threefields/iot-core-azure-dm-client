@@ -29,31 +29,9 @@ using namespace std::experimental;
 
 Utils::ETWLogger gETWLogger;
 
-Logger::Logger(bool console, const wchar_t* logsRoot) :
+Logger::Logger(bool console) :
     _console(console)
 {
-    if (!filesystem::exists(logsRoot))
-    {
-        error_code code;
-        filesystem::create_directory(logsRoot, code);
-    }
-
-    basic_ostringstream<wchar_t> fileName;
-    fileName << logsRoot;
-
-    wchar_t moduleFileName[MAX_PATH] = { 0 };
-    DWORD length = GetModuleFileName(NULL, moduleFileName, sizeof(moduleFileName) / sizeof(moduleFileName[0]));
-    if (length != 0 && length != MAX_PATH)
-    {
-        path p(moduleFileName);
-        fileName << p.filename();
-        fileName << L".";
-    }
-
-    fileName << GetCurrentProcessId();
-    fileName << LOGFILE_EXT;
-
-    _logFileName = fileName.str();
     Log("----New Session----------------------------------------------------------------");
 }
 
@@ -95,14 +73,6 @@ void Logger::Log(Utils::ETWLogger::LoggingLevel level, const wchar_t* msg)
     {
         lock_guard<mutex> guard(_mutex);
         wcout << messageWithTime;
-    }
-
-    if (_logFileName.size())
-    {
-        lock_guard<mutex> guard(_mutex);
-        basic_ofstream<wchar_t> outFile(_logFileName, fstream::app);
-        outFile << messageWithTime;
-        outFile.close();
     }
 
     gETWLogger.Log(msg, level);

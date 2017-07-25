@@ -20,5 +20,10 @@ namespace Utils
         ~ETWLogger();
         void Log(const std::wstring& msg, LoggingLevel level);
         void Log(const std::string& msg, LoggingLevel level);
+
+    private:
+        std::wstring GetExeFileName();
+
+        std::wstring _exeFileName;
     };
 }

@@ -12,6 +12,8 @@ IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMA
 WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH 
 THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
+
+using DMDataContract;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -34,9 +36,8 @@ namespace DMDashboard
 {
     public partial class MainWindow : Window
     {
-        const string DTWindowsIoTNameSpace = "windows";
         const string DTRefreshing = "\"refreshing\"";
-        const string DTRootNodeString = "{ \"properties\" : { \"desired\" : { \"" + DTWindowsIoTNameSpace + "\" : ";
+        const string DTRootNodeString = "{ \"properties\" : { \"desired\" : { \"" + DMJSonConstants.DTWindowsIoTNameSpace + "\" : ";
         const string DTRootNodeSuffixString = "}}}";
 
         const string IotHubConnectionString = "IotHubConnectionString";
@@ -185,7 +186,7 @@ namespace DMDashboard
             parameters.pkgFamilyName = packageFamilyName;
             string parametersString = JsonConvert.SerializeObject(parameters);
             CancellationToken cancellationToken = new CancellationToken();
-            DeviceMethodReturnValue result = await _deviceTwin.CallDeviceMethod(DTWindowsIoTNameSpace + ".manageAppLifeCycle", parametersString, new TimeSpan(0, 0, 30), cancellationToken);
+            DeviceMethodReturnValue result = await _deviceTwin.CallDeviceMethod(DMJSonConstants.DTWindowsIoTNameSpace + ".manageAppLifeCycle", parametersString, new TimeSpan(0, 0, 30), cancellationToken);
             System.Windows.MessageBox.Show("Reboot Command Result:\nStatus: " + result.Status + "\nReason: " + result.Payload);
         }
 
@@ -251,7 +252,7 @@ namespace DMDashboard
             JObject desiredObject = (JObject)JsonConvert.DeserializeObject(deviceTwinData.reportedPropertiesJson);
 
             JToken windowsToken;
-            if (!desiredObject.TryGetValue(DTWindowsIoTNameSpace, out windowsToken) || windowsToken.Type != JTokenType.Object)
+            if (!desiredObject.TryGetValue(DMJSonConstants.DTWindowsIoTNameSpace, out windowsToken) || windowsToken.Type != JTokenType.Object)
             {
                 return;
             }
@@ -370,7 +371,7 @@ namespace DMDashboard
         private async void RebootSystemAsync()
         {
             CancellationToken cancellationToken = new CancellationToken();
-            DeviceMethodReturnValue result = await _deviceTwin.CallDeviceMethod(DTWindowsIoTNameSpace + ".immediateReboot", "{}", new TimeSpan(0, 0, 30), cancellationToken);
+            DeviceMethodReturnValue result = await _deviceTwin.CallDeviceMethod(DMJSonConstants.DTWindowsIoTNameSpace + ".immediateReboot", "{}", new TimeSpan(0, 0, 30), cancellationToken);
             System.Windows.MessageBox.Show("Reboot Command Result:\nStatus: " + result.Status + "\nReason: " + result.Payload);
         }
 
@@ -389,7 +390,7 @@ namespace DMDashboard
             Debug.WriteLine("Reset params : " + resetParamsString);
 
             CancellationToken cancellationToken = new CancellationToken();
-            DeviceMethodReturnValue result = await _deviceTwin.CallDeviceMethod(DTWindowsIoTNameSpace + ".factoryReset", resetParamsString, new TimeSpan(0, 0, 30), cancellationToken);
+            DeviceMethodReturnValue result = await _deviceTwin.CallDeviceMethod(DMJSonConstants.DTWindowsIoTNameSpace + ".factoryReset", resetParamsString, new TimeSpan(0, 0, 30), cancellationToken);
             // ToDo: it'd be nice to show the result in the UI.
         }
 
@@ -401,7 +402,7 @@ namespace DMDashboard
         private async void StartAppSelfUpdate()
         {
             CancellationToken cancellationToken = new CancellationToken();
-            DeviceMethodReturnValue result = await _deviceTwin.CallDeviceMethod(DTWindowsIoTNameSpace + ".startAppSelfUpdate", "{}", new TimeSpan(0, 0, 30), cancellationToken);
+            DeviceMethodReturnValue result = await _deviceTwin.CallDeviceMethod(DMJSonConstants.DTWindowsIoTNameSpace + ".startAppSelfUpdate", "{}", new TimeSpan(0, 0, 30), cancellationToken);
             StartAppSelfUpdateResult.Text = result.Payload;
         }
 
@@ -413,7 +414,7 @@ namespace DMDashboard
         private async void UpdateDTReportedAsync()
         {
             CancellationToken cancellationToken = new CancellationToken();
-            DeviceMethodReturnValue result = await _deviceTwin.CallDeviceMethod(DTWindowsIoTNameSpace + ".reportAllDeviceProperties", "{}", new TimeSpan(0, 0, 30), cancellationToken);
+            DeviceMethodReturnValue result = await _deviceTwin.CallDeviceMethod(DMJSonConstants.DTWindowsIoTNameSpace + ".reportAllDeviceProperties", "{}", new TimeSpan(0, 0, 30), cancellationToken);
             // ToDo: it'd be nice to show the result in the UI.
         }
 
@@ -449,6 +450,8 @@ namespace DMDashboard
         {
             await UpdateTwinData(DTRootNodeString + refreshingValue + DTRootNodeSuffixString);
             await UpdateTwinData(DTRootNodeString + finalValue + DTRootNodeSuffixString);
+
+            MessageBox.Show("Desired state sent to Device Twin!");
         }
 
         private async Task SetDesired(string sectionName, string sectionValueString)
@@ -659,7 +662,7 @@ namespace DMDashboard
             Debug.WriteLine(parametersJson);
 
             CancellationToken cancellationToken = new CancellationToken();
-            return await _deviceTwin.CallDeviceMethod(DTWindowsIoTNameSpace + ".getCertificateDetails", parametersJson, new TimeSpan(0, 0, 30), cancellationToken);
+            return await _deviceTwin.CallDeviceMethod(DMJSonConstants.DTWindowsIoTNameSpace + ".getCertificateDetails", parametersJson, new TimeSpan(0, 0, 30), cancellationToken);
         }
 
         private void ShowCertificateDetails(CertificateSelector sender, CertificateSelector.CertificateData certificateData)
@@ -721,13 +724,13 @@ namespace DMDashboard
             Debug.WriteLine(parametersJson);
 
             var cancellationToken = new CancellationToken();
-            DeviceMethodReturnValue result = await this._deviceTwin.CallDeviceMethod(DTWindowsIoTNameSpace + ".getWifiDetails", parametersJson, new TimeSpan(0, 0, 30), cancellationToken);
+            DeviceMethodReturnValue result = await this._deviceTwin.CallDeviceMethod(DMJSonConstants.DTWindowsIoTNameSpace + ".getWifiDetails", parametersJson, new TimeSpan(0, 0, 30), cancellationToken);
             System.Windows.MessageBox.Show("Get Wifi Profile Details Command Result:\nStatus: " + result.Status + "\nReason: " + result.Payload);
         }
 
         private void PopulateExternalStorageFromJson(JObject jRoot)
         {
-            JToken jToken = jRoot.SelectToken("properties.desired." + DTWindowsIoTNameSpace + ".externalStorage.connectionString");
+            JToken jToken = jRoot.SelectToken("properties.desired." + DMJSonConstants.DTWindowsIoTNameSpace + ".externalStorage.connectionString");
             if (jToken != null && jToken is JValue)
             {
                 JValue jConnectionString = (JValue)jToken;

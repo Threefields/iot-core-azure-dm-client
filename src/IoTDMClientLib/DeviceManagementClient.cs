@@ -34,13 +34,12 @@ namespace Microsoft.Devices.Management
     // This is the main entry point into DM
     public class DeviceManagementClient
     {
-        const string DTWindowsIoTNameSpace = "windows";
-        const string MethodImmediateReboot = DTWindowsIoTNameSpace + ".immediateReboot";
-        const string MethodReportAllDeviceProperties = DTWindowsIoTNameSpace + ".reportAllDeviceProperties";
-        const string MethodStartAppSelfUpdate = DTWindowsIoTNameSpace + ".startAppSelfUpdate";
-        const string MethodGetCertificateDetails = DTWindowsIoTNameSpace + ".getCertificateDetails";
-        const string MethodFactoryReset = DTWindowsIoTNameSpace + ".factoryReset";
-        const string MethodManageAppLifeCycle = DTWindowsIoTNameSpace + ".manageAppLifeCycle";
+        const string MethodImmediateReboot = DMJSonConstants.DTWindowsIoTNameSpace + ".immediateReboot";
+        const string MethodReportAllDeviceProperties = DMJSonConstants.DTWindowsIoTNameSpace + ".reportAllDeviceProperties";
+        const string MethodStartAppSelfUpdate = DMJSonConstants.DTWindowsIoTNameSpace + ".startAppSelfUpdate";
+        const string MethodGetCertificateDetails = DMJSonConstants.DTWindowsIoTNameSpace + ".getCertificateDetails";
+        const string MethodFactoryReset = DMJSonConstants.DTWindowsIoTNameSpace + ".factoryReset";
+        const string MethodManageAppLifeCycle = DMJSonConstants.DTWindowsIoTNameSpace + ".manageAppLifeCycle";
 
         public IDeviceTwin DeviceTwin { get { return _deviceTwin; } }
 
@@ -87,7 +86,7 @@ namespace Microsoft.Devices.Management
                     windowsNodeValue[sectionName] = properties;
 
                     Dictionary<string, object> collection = new Dictionary<string, object>();
-                    collection[DTWindowsIoTNameSpace] = windowsNodeValue;
+                    collection[DMJSonConstants.DTWindowsIoTNameSpace] = windowsNodeValue;
 
                     await _deviceTwin.ReportProperties(collection);
                 }
@@ -209,7 +208,7 @@ namespace Microsoft.Devices.Management
 
             Dictionary<string, object> desiredProperties = await this._deviceTwin.GetDesiredPropertiesAsync();
             object windowsPropValue = null;
-            if (desiredProperties.TryGetValue(DTWindowsIoTNameSpace, out windowsPropValue) && windowsPropValue != null && windowsPropValue is JObject)
+            if (desiredProperties.TryGetValue(DMJSonConstants.DTWindowsIoTNameSpace, out windowsPropValue) && windowsPropValue != null && windowsPropValue is JObject)
             {
                 ApplyDesiredStateAsync((JObject)windowsPropValue);
             }
@@ -221,12 +220,12 @@ namespace Microsoft.Devices.Management
 
             try
             {
-                JObject windowsPropValue = (JObject)desiredProperties[DTWindowsIoTNameSpace];
+                JObject windowsPropValue = (JObject)desiredProperties[DMJSonConstants.DTWindowsIoTNameSpace];
                 ApplyDesiredStateAsync(windowsPropValue);
             }
             catch (Exception)
             {
-                Debug.WriteLine("No properties.desired." + DTWindowsIoTNameSpace + " is found.");
+                Debug.WriteLine("No properties.desired." + DMJSonConstants.DTWindowsIoTNameSpace + " is found.");
             }
         }
 
@@ -260,7 +259,7 @@ namespace Microsoft.Devices.Management
         private void ReportImmediateRebootStatus(RebootRequestStatus rebootRequestStatus, string rebootCmdTime)
         {
             Dictionary<string, object> collection = new Dictionary<string, object>();
-            collection[DTWindowsIoTNameSpace] = new
+            collection[DMJSonConstants.DTWindowsIoTNameSpace] = new
             {
                 rebootInfo = new
                 {
@@ -349,7 +348,7 @@ namespace Microsoft.Devices.Management
         private void ReportSelfUpdateStatus(string lastCheckValue, string statusValue)
         {
             Dictionary<string, object> collection = new Dictionary<string, object>();
-            collection[DTWindowsIoTNameSpace] = new
+            collection[DMJSonConstants.DTWindowsIoTNameSpace] = new
             {
                 appUpdate = new
                 {
@@ -568,7 +567,7 @@ namespace Microsoft.Devices.Management
 
         public void ApplyDesiredStateAsync(JObject windowsPropValue)
         {
-            Logger.Log("Applying " + DTWindowsIoTNameSpace + " node desired state...", LoggingLevel.Verbose);
+            Logger.Log("Applying " + DMJSonConstants.DTWindowsIoTNameSpace + " node desired state...", LoggingLevel.Verbose);
 
             // ToDo: We should not throw here. All problems need to be logged.
             Message.CertificateConfiguration certificateConfiguration = null;
@@ -742,7 +741,7 @@ namespace Microsoft.Devices.Management
 
             Message.GetTimeInfoResponse timeInfoResponse = await GetTimeInfoAsync();
             Dictionary<string, object> collection = new Dictionary<string, object>();
-            collection[DTWindowsIoTNameSpace] = new
+            collection[DMJSonConstants.DTWindowsIoTNameSpace] = new
             {
                 timeInfo = timeInfoResponse.data,
             };
@@ -777,9 +776,9 @@ namespace Microsoft.Devices.Management
             windowsObj["windowsUpdates"] = JObject.Parse(JsonConvert.SerializeObject(windowsUpdatesResponse));
 
             Dictionary<string, object> collection = new Dictionary<string, object>();
-            collection[DTWindowsIoTNameSpace] = windowsObj;
+            collection[DMJSonConstants.DTWindowsIoTNameSpace] = windowsObj;
 
-            Debug.WriteLine($"Report properties: {collection[DTWindowsIoTNameSpace].ToString()}");
+            Debug.WriteLine($"Report properties: {collection[DMJSonConstants.DTWindowsIoTNameSpace].ToString()}");
             _deviceTwin.ReportProperties(collection);
         }
 

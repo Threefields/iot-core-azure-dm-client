@@ -20,14 +20,11 @@ THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "ETWLogger.h"
 
 #include "..\DMMessage\DMGarbageCollectorTempFolder.h"
-#define TRACE_LOGSROOT SC_CLEANUP_FOLDER
-
-#define TRACE_MAX_LEN 512
 
 class Logger
 {
 public:
-    Logger(bool console, const wchar_t* logsRoot);
+    Logger(bool console);
 
     // Legacy (no logging level; defaults to information)
     void Log(const char*  message);
@@ -63,15 +60,9 @@ private:
     std::mutex _mutex;
 
     bool _console;
-    std::wstring _logFileName;
 };
 
-#ifdef _DEBUG
-Logger __declspec(selectany) gLogger(true /*console output*/, TRACE_LOGSROOT);
+Logger __declspec(selectany) gLogger(true /*console output*/);
 
 #define TRACE(msg) gLogger.Log(msg)
 #define TRACEP(format, param) gLogger.Log(format, param)
-#else
-#define TRACE(msg)
-#define TRACEP(format, param)
-#endif

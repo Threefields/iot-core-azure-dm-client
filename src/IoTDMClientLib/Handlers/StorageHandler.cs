@@ -37,10 +37,10 @@ namespace Microsoft.Devices.Management
         const string JsonConnectionString = "connectionString";
         const string JsonContainer = "container";
 
-        const string MethodEnumDMFolders = "windows.enumDMFolders";
-        const string MethodEnumDMFiles = "windows.enumDMFiles";
-        const string MethodDeleteDMFile = "windows.deleteDMFile";
-        const string MethodUploadDMFile = "windows.uploadDMFile";
+        const string MethodEnumDMFolders = DMJSonConstants.DTWindowsIoTNameSpace + ".enumDMFolders";
+        const string MethodEnumDMFiles = DMJSonConstants.DTWindowsIoTNameSpace + ".enumDMFiles";
+        const string MethodDeleteDMFile = DMJSonConstants.DTWindowsIoTNameSpace + ".deleteDMFile";
+        const string MethodUploadDMFile = DMJSonConstants.DTWindowsIoTNameSpace + ".uploadDMFile";
 
         public StorageHandler(IClientHandlerCallBack callback, ISystemConfiguratorProxy systemConfiguratorProxy)
         {

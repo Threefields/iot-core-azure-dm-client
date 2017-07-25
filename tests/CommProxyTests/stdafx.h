@@ -26,7 +26,3 @@ THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <tchar.h>
 #include <stdint.h>
 #include <Windows.h>
-
-#define PROVIDER_NAME "CommProxyTest"
-// "323C851D-8FD4-40FA-BF4B-5A7D82E65B45"
-#define PROVIVDER_GUID (0x323C851D, 0x8FD4, 0x40FA, 0xBF, 0x4B, 0x5A, 0x7D, 0x82, 0xE6, 0x5B, 0x45)

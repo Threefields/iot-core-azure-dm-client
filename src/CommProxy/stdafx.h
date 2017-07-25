@@ -32,7 +32,3 @@ THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <sstream>
 #include <ppltasks.h>
 #include <windows.h>
-
-#define PROVIDER_NAME "CommProxy"
-// "29AEACCC-8824-4F13-A7A3-C4D593CE0809"
-#define PROVIVDER_GUID (0x29AEACCC, 0x8824, 0x4F13, 0xA7, 0xA3, 0xC4, 0xD5, 0x93, 0xCE, 0x08, 0x09)
